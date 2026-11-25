@@ -1,25 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { Activity, ArrowDown, ArrowRight, ArrowUp, ArrowUpRight, ArrowUpDown, BadgeCheck, Building2, Calendar, CalendarDays, ChartColumn, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, Clock3, Eye, FilePenLine, Hash, ListFilter, Plus, Search, Send, Star, Tag, Zap, type LucideIcon } from 'lucide-react'
+import { Activity, ArrowDown, ArrowRight, ArrowUp, ArrowUpRight, ArrowUpDown, BadgeCheck, Building2, CalendarDays, ChartColumn, Check, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, Clock3, Download, Eye, FilePenLine, Hash, ListFilter, Plus, Search, Send, Star, X, Zap, type LucideIcon } from 'lucide-react'
 import { Skeleton } from '../components/Page'
 import { Pager, type Page } from '../components/Pager'
 import { Tabs } from '../components/Tabs'
-import { apiGet } from '../services/apiClient'
+import { apiGet, apiPost } from '../services/apiClient'
 import { CATEGORY_LABELS, STATUS_LABELS, type ActivityRecord, type SourceCategory, type ActivityStatus, type Facility, type ReportingPeriod } from '../types/api'
 import { Notify } from '../components/Toast'
 
 import { dateRange } from '../services/format'
 const Badge = ({ status }: { status: ActivityStatus }) => <span className={`badge badge--${status.toLowerCase()}`}>{STATUS_LABELS[status]}</span>
-
-const compactDateRange = (start: string, end: string) => {
-  const startIso = start.slice(0, 10), endIso = end.slice(0, 10)
-  const dayMonth = (iso: string) => new Date(`${iso}T00:00:00.000Z`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' })
-  const startYear = startIso.slice(0, 4), endYear = endIso.slice(0, 4)
-  if (startIso === endIso) return `${dayMonth(startIso)} ${endYear}`
-  if (startYear === endYear) return `${dayMonth(startIso)} – ${dayMonth(endIso)} ${endYear}`
-  return `${dayMonth(startIso)} '${startYear.slice(2)} – ${dayMonth(endIso)} '${endYear.slice(2)}`
-}
+type DashboardRecord = ActivityRecord & { dashboardEmissions?: string | null }
+type QualityRow = { recordId?: string; severity: 'high' | 'medium' | 'low'; title: string }
 
 const pageNumbers = (current: number, last: number): Array<number | 'ellipsis'> => {
   if (last <= 5) return Array.from({ length: last }, (_, index) => index + 1)
@@ -29,15 +22,8 @@ const pageNumbers = (current: number, last: number): Array<number | 'ellipsis'> 
 }
 
 const DOT_MARK_HEIGHTS = [2, 3, 4, 6, 4, 3, 5, 4, 3, 5, 4, 3, 6, 4, 3, 5]
-
 function DotMark() {
-  return (
-    <svg className="dashboard-metric__mark" viewBox="0 0 116 52" aria-hidden="true">
-      {DOT_MARK_HEIGHTS.flatMap((height, column) => Array.from({ length: 7 }, (_, row) => (
-        <circle key={`${column}-${row}`} cx={4 + column * 7} cy={4 + row * 7} r="1.65" className={row >= 7 - height ? 'is-active' : ''} />
-      )))}
-    </svg>
-  )
+  return <svg className="dashboard-metric__mark" viewBox="0 0 116 52" aria-hidden="true">{DOT_MARK_HEIGHTS.flatMap((height, column) => Array.from({ length: 7 }, (_, row) => <circle key={`${column}-${row}`} cx={4 + column * 7} cy={4 + row * 7} r="1.65" className={row >= 7 - height ? 'is-active' : ''} />))}</svg>
 }
 
 function ActivityMetricCard({ tone, icon: Icon, title, value, detail, to }: { tone: string; icon: LucideIcon; title: string; value: number; detail: string; to: string }) {
@@ -80,21 +66,35 @@ export function ActivityDashboardPage() {
   const { me } = useAuth()
   const flash = (useLocation().state as { flash?: string } | null)?.flash
   const [params, setParams] = useSearchParams()
-  const [data, setData] = useState<(Page<ActivityRecord> & { counts: { status: Partial<Record<ActivityStatus, number>> } }) | null>(null)
+  const [data, setData] = useState<(Page<DashboardRecord> & { counts: { status: Partial<Record<ActivityStatus, number>> } }) | null>(null)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<'updated' | 'activity' | 'quantity'>('updated')
-  const [ascending, setAscending] = useState(false)
+  const [ascending, setAscending] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [qualityRows, setQualityRows] = useState<QualityRow[] | null>(null)
+  const [qualityError, setQualityError] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [refreshToken, setRefreshToken] = useState(0)
+  const selectAllRef = useRef<HTMLInputElement>(null)
   const canWrite = me?.permissions.includes('activity.write')
+  const canSubmit = me?.permissions.includes('activity.submit')
+  const canReadQuality = me?.permissions.includes('quality.read') ?? false
 
   useEffect(() => {
     apiGet<ReportingPeriod[]>('/api/reporting-periods')
       .then((p) => {
-        if (!params.has('reportingPeriodId') || !params.has('pageSize')) {
-          const current = [...p].sort((a, b) => b.startDate.localeCompare(a.startDate)).find((period) => period.status === 'OPEN')
+        const current = [...p].sort((a, b) => b.startDate.localeCompare(a.startDate)).find((period) => period.status === 'OPEN')
+        const imagePeriod = p.find((period) => period.name === 'FY 2024-25')
+        const defaultPeriod = imagePeriod ?? current
+        const periodInUrl = p.find((period) => period.id === params.get('reportingPeriodId'))
+        // Replace the previous implicit current-period default with the requested historical demo dataset.
+        const useDemoPeriod = !periodInUrl || periodInUrl.id === current?.id
+        if (useDemoPeriod || !params.has('pageSize')) {
           setParams((previous) => {
             const next = new URLSearchParams(previous)
-            if (!next.has('reportingPeriodId') && current) next.set('reportingPeriodId', current.id)
+            if (useDemoPeriod && defaultPeriod) next.set('reportingPeriodId', defaultPeriod.id)
             if (!next.has('pageSize')) next.set('pageSize', '12')
             return next
           }, { replace: true })
@@ -108,11 +108,25 @@ export function ActivityDashboardPage() {
   const query = params.toString()
   useEffect(() => {
     let live = true
-    apiGet<Page<ActivityRecord> & { counts: { status: Partial<Record<ActivityStatus, number>> } }>(`/api/activities${query ? `?${query}` : ''}`)
+    apiGet<Page<DashboardRecord> & { counts: { status: Partial<Record<ActivityStatus, number>> } }>(`/api/activities${query ? `?${query}` : ''}`)
       .then((result) => { if (live) setData(result) })
       .catch((e: Error) => { if (live) setError(e.message) })
     return () => { live = false }
-  }, [query])
+  }, [query, refreshToken])
+
+  const qualityPeriodId = params.get('reportingPeriodId')
+  useEffect(() => {
+    if (!qualityPeriodId || !canReadQuality) { setQualityRows(null); return }
+    let live = true
+    setQualityRows(null)
+    setQualityError(false)
+    apiGet<{ rows: QualityRow[] }>(`/api/data-quality?reportingPeriodId=${encodeURIComponent(qualityPeriodId)}&state=open`)
+      .then((result) => { if (live) setQualityRows(result.rows) })
+      .catch(() => { if (live) setQualityError(true) })
+    return () => { live = false }
+  }, [qualityPeriodId, canReadQuality])
+
+  useEffect(() => { setSelectedIds([]) }, [query])
 
   const count = (status?: ActivityStatus) => status ? data?.counts.status[status] ?? 0 : data?.total ?? 0
   const totalAcrossStatuses = data ? Object.values(data.counts.status).reduce((sum, value) => sum + (value ?? 0), 0) : 0
@@ -131,7 +145,51 @@ export function ActivityDashboardPage() {
     })
   }, [data, search, sort, ascending])
 
-  const statusTabs: Array<{ key: string; label: string; count?: number; alert?: boolean }> = [
+  const selectedRecords = (data?.rows ?? []).filter((record) => selectedIds.includes(record.id))
+  const visibleIds = rows.map((record) => record.id)
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id))
+  const someVisibleSelected = visibleIds.some((id) => selectedIds.includes(id))
+  useEffect(() => { if (selectAllRef.current) selectAllRef.current.indeterminate = someVisibleSelected && !allVisibleSelected }, [someVisibleSelected, allVisibleSelected])
+  const canSubmitSelected = !!canSubmit && selectedRecords.length > 0 && selectedRecords.every((record) =>
+    (record.status === 'DRAFT' || record.status === 'RETURNED') && record.reportingPeriod.status === 'OPEN'
+    && (record.createdBy.id === me?.user.id || me?.role === 'TENANT_ADMIN'))
+  const qualityByRecord = useMemo(() => {
+    const grouped = new Map<string, QualityRow[]>()
+    for (const finding of qualityRows ?? []) if (finding.recordId) grouped.set(finding.recordId, [...(grouped.get(finding.recordId) ?? []), finding])
+    return grouped
+  }, [qualityRows])
+
+  const toggleRecord = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((selected) => selected !== id) : [...current, id])
+  const toggleVisible = () => setSelectedIds((current) => allVisibleSelected
+    ? current.filter((id) => !visibleIds.includes(id))
+    : [...new Set([...current, ...visibleIds])])
+  const exportSelected = () => {
+    const csvValue = (value: string | number | null | undefined) => `"${String(value ?? '').replaceAll('"', '""')}"`
+    const lines = [
+      ['Record ID', 'Activity', 'Facility', 'Reporting period', 'Start date', 'End date', 'Quantity', 'Unit', 'Emissions (tCO2e)', 'Workflow status'],
+      ...selectedRecords.map((record) => [record.id, record.emissionSource.name, record.facility.code, record.reportingPeriod.name, record.startDate.slice(0, 10), record.endDate.slice(0, 10), record.quantity, record.unit, record.dashboardEmissions ?? '', STATUS_LABELS[record.status]]),
+    ].map((line) => line.map(csvValue).join(','))
+    const blobUrl = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' }))
+    const anchor = document.createElement('a')
+    anchor.href = blobUrl
+    anchor.download = 'tula-activity-records.csv'
+    anchor.click()
+    URL.revokeObjectURL(blobUrl)
+  }
+  const submitSelected = async () => {
+    if (!canSubmitSelected) return
+    setSubmitting(true)
+    setError(null)
+    const result = await Promise.allSettled(selectedRecords.map((record) => apiPost(`/api/activities/${record.id}/submit`)))
+    const submitted = result.filter((item) => item.status === 'fulfilled').length
+    const failed = result.length - submitted
+    setNotice(`${submitted} record${submitted === 1 ? '' : 's'} submitted for review${failed ? `; ${failed} could not be submitted` : ''}.`)
+    setSelectedIds([])
+    setSubmitting(false)
+    if (submitted) setRefreshToken((value) => value + 1)
+  }
+
+  const statusTabs: Array<{ key: string; label: string; count?: number; alert?: boolean; icon?: LucideIcon }> = [
     { key: '', label: 'All activity', count: totalAcrossStatuses, icon: Star },
     { key: 'DRAFT', label: 'Draft', count: count('DRAFT'), icon: FilePenLine },
     { key: 'SUBMITTED', label: 'Submitted', count: count('SUBMITTED'), icon: Send },
@@ -154,6 +212,7 @@ export function ActivityDashboardPage() {
         </div>
       </header>
       <Notify message={flash} />
+      <Notify message={notice} />
       <Notify kind="error" message={error} />
       {!data && !error && <Skeleton />}
 
@@ -172,38 +231,50 @@ export function ActivityDashboardPage() {
             <div className="dashboard-ledger__head">
               <div className="dashboard-ledger__title"><h2>Activity data ledger</h2><p>Review entries, supporting evidence, and workflow status.</p></div>
               <div className="dashboard-ledger__tools">
-                <label className="dashboard-search"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search activity records" aria-label="Search activity records" /></label>
+                <label className="dashboard-search"><Search size={17} /><input value={search} onChange={(event) => { setSearch(event.target.value); setSelectedIds([]) }} placeholder="Search activity records" aria-label="Search activity records" /></label>
                 <Link className="button button--ghost dashboard-filter" to="/activities"><ListFilter size={16} /> Filter</Link>
-                <div className="dashboard-sort"><ArrowUpDown size={15} /><select aria-label="Sort records" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}><option value="updated">Recently updated</option><option value="activity">Activity name</option><option value="quantity">Quantity</option></select><button type="button" aria-label={ascending ? 'Sort descending' : 'Sort ascending'} onClick={() => setAscending((value) => !value)}>{ascending ? <ArrowUp size={14} /> : <ArrowDown size={14} />}</button></div>
+                <div className="dashboard-sort"><ArrowUpDown size={15} /><select aria-label="Sort records" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}><option value="updated">Last updated</option><option value="activity">Activity name</option><option value="quantity">Quantity</option></select><button type="button" aria-label={ascending ? 'Sort descending' : 'Sort ascending'} onClick={() => setAscending((value) => !value)}>{ascending ? <ArrowUp size={14} /> : <ArrowDown size={14} />}</button></div>
               </div>
             </div>
             <div className="table-wrap dashboard-records-wrap">
               <table className="table dashboard-table">
                 <thead><tr>
+                  <th className="dashboard-select-col"><input ref={selectAllRef} className="dashboard-row-checkbox" type="checkbox" checked={allVisibleSelected} onChange={toggleVisible} aria-label="Select all visible records" /></th>
+                  <th><span className="dashboard-th">Activity</span></th>
                   <th><span className="dashboard-th"><Building2 />Facility</span></th>
-                  <th><span className="dashboard-th"><Zap />Source</span></th>
-                  <th><span className="dashboard-th"><Tag />Category</span></th>
-                  <th><span className="dashboard-th"><Calendar />Period</span></th>
-                  <th><span className="dashboard-th"><CalendarDays />Dates</span></th>
-                  <th className="num"><span className="dashboard-th dashboard-th--end"><Hash />Quantity</span></th>
-                  <th><span className="dashboard-th"><BadgeCheck />Status</span></th>
+                  <th><span className="dashboard-th"><Hash />Quantity</span></th>
+                  <th><span className="dashboard-th"><CalendarDays />Date / period</span></th>
+                  <th><span className="dashboard-th"><Zap />Category</span></th>
+                  <th title="Record status reflects workflow approval; data-quality checks are shown separately."><span className="dashboard-th"><BadgeCheck />Status</span></th>
+                  <th><span className="dashboard-th"><CircleAlert />Data quality</span></th>
                   <th><span className="dashboard-th dashboard-th--action">Action</span></th>
                 </tr></thead>
-                <tbody>{rows.map((record) => (
-                  <tr key={record.id}>
-                    <td><strong>{record.facility.code}</strong></td>
-                    <td className="dashboard-source">{record.emissionSource.name}</td>
-                    <td><span className="dashboard-category">{CATEGORY_SHORT[record.emissionSource.category]}</span></td>
-                    <td className="nowrap">{record.reportingPeriod.name}</td>
-                    <td className="dashboard-dates">{compactDateRange(record.startDate, record.endDate)}</td>
-                    <td className="num">{Number(record.quantity).toLocaleString(undefined, { maximumFractionDigits: 6 })} <span className="field__hint">{record.unit}</span></td>
-                    <td><Badge status={record.status} /></td>
-                    <td className="table__actions"><Link className="dashboard-row-action" to={`/activities/${record.id}`} aria-label={`View details for ${record.emissionSource.name} at ${record.facility.code}`} title="View activity details"><Eye size={18} /></Link></td>
-                  </tr>
-                ))}</tbody>
+                <tbody>{rows.map((record) => {
+                  const isSelected = selectedIds.includes(record.id)
+                  const findings = qualityByRecord.get(record.id) ?? []
+                  const highestSeverity = findings.some((finding) => finding.severity === 'high') ? 'high' : findings.some((finding) => finding.severity === 'medium') ? 'medium' : 'low'
+                  return (
+                    <tr key={record.id} className={isSelected ? 'is-selected' : ''}>
+                      <td className="dashboard-select-col"><input className="dashboard-row-checkbox" type="checkbox" checked={isSelected} onChange={() => toggleRecord(record.id)} aria-label={`Select ${record.emissionSource.name} at ${record.facility.code}`} /></td>
+                      <td className="dashboard-record-cell"><span className="dashboard-record-name" title={record.emissionSource.name}>{record.emissionSource.name}</span><Link className="dashboard-record-id" to={`/activities/${record.id}`} title={`Open activity ${record.id}`}>ACT-…{record.id.slice(-4).toUpperCase()}</Link></td>
+                      <td><strong title={record.facility.name}>{record.facility.code}</strong></td>
+                      <td className="dashboard-quantity">{Number(record.quantity).toLocaleString(undefined, { maximumFractionDigits: 6 })} <span>{record.unit}</span></td>
+                      <td className="dashboard-date-period" title={`${record.reportingPeriod.name}: ${dateRange(record.startDate, record.endDate)}`}><strong>{record.reportingPeriod.name}</strong><span>{dateRange(record.startDate, record.endDate)}</span></td>
+                      <td><span className="dashboard-category">{CATEGORY_SHORT[record.emissionSource.category]}</span></td>
+                      <td title="Record status reflects workflow approval; data-quality checks are shown separately."><Badge status={record.status} /></td>
+                      <td>{qualityRows === null ? <span className="dashboard-quality-muted">{!canReadQuality || qualityError ? 'Unavailable' : 'Checking'}</span> : findings.length ? <span className={`dashboard-quality dashboard-quality--${highestSeverity}`} title={findings.map((finding) => finding.title).join('; ')}>{highestSeverity[0]!.toUpperCase() + highestSeverity.slice(1)} · {findings.length}</span> : <span className="dashboard-quality-clear"><Check size={14} />No flagged issues</span>}</td>
+                      <td className="table__actions"><Link className="dashboard-row-action" to={`/activities/${record.id}`} aria-label={`View details for ${record.emissionSource.name} at ${record.facility.code}`} title="View activity details"><Eye size={18} /></Link></td>
+                    </tr>
+                  )
+                })}{!rows.length && <tr><td className="dashboard-empty" colSpan={9}>{search ? 'No records match this search on the current page.' : 'No activity records match these filters.'}</td></tr>}</tbody>
               </table>
-              {!rows.length && <p className="status">{search ? 'No records match this search on the current page.' : 'No activity records match these filters.'}</p>}
             </div>
+            {selectedRecords.length > 0 && <div className="dashboard-bulk-toolbar" role="toolbar" aria-label="Selected activity actions">
+              <span className="dashboard-bulk-count">{selectedRecords.length} selected</span>
+              {canSubmitSelected && <button className="button button--small" type="button" disabled={submitting} onClick={() => void submitSelected()}>{submitting ? 'Submitting…' : <><Check size={15} />Submit for review</>}</button>}
+              <button className="button button--ghost button--small" type="button" onClick={exportSelected}><Download size={15} />Export CSV</button>
+              <button className="dashboard-bulk-clear" type="button" onClick={() => setSelectedIds([])} aria-label="Clear selection" title="Clear selection"><X size={17} /></button>
+            </div>}
             <div className="dashboard-ledger__foot">
               <span className="dashboard-ledger__range">Showing {data.total ? ((data.page - 1) * data.pageSize + 1).toLocaleString() : 0}–{Math.min(data.page * data.pageSize, data.total).toLocaleString()} of {data.total.toLocaleString()} records</span>
               <div className="dashboard-ledger__pagination">

@@ -1,5 +1,7 @@
 /* Order: tokens → reset → layout → components → page styles → utilities → print */
 @import '@fontsource-variable/inter';
+@import '@fontsource/ibm-plex-serif/latin.css';
+@import '@fontsource/ibm-plex-mono/latin.css';
 
 @import './base/variables.css';
 @import './base/base.css';

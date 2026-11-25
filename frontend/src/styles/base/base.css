@@ -7,7 +7,7 @@ body {
   margin: 0;
   font-family: var(--font-sans);
   font-size: var(--text-md);
-  line-height: 1.5;
+  line-height: var(--line-body);
   color: var(--color-text);
   background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
@@ -16,6 +16,9 @@ body {
 /* Spacing comes from the layout flow rules, never from element defaults. */
 h1, h2, h3, h4, p, ul, ol, dl, dd, figure, blockquote { margin: 0; }
 h1, h2, h3, h4 { letter-spacing: -0.01em; font-weight: 600; }
+h1 { font-size: var(--text-h1); line-height: var(--line-h1); }
+h2 { font-size: var(--text-h2); line-height: var(--line-h2); }
+h3, h4 { font-size: var(--text-h3); line-height: var(--line-h3); }
 a { color: inherit; }
 img, svg { max-width: 100%; }
 button { font: inherit; }

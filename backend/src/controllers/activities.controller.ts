@@ -156,7 +156,25 @@ export const listActivities: RequestHandler = async (req, res) => {
     }),
     db.activityRecord.count({ where }),
   ])
-  res.json({ rows, total, page: q.page, pageSize, counts })
+  let ledgerRows: typeof rows | Array<(typeof rows)[number] & { dashboardEmissions: string | null }> = rows
+  if (can(req.auth!.role!, 'calc.read') && rows.length) {
+    const results = await db.calculationResult.findMany({
+      where: { activityRecordId: { in: rows.map((row) => row.id) } },
+      orderBy: { createdAt: 'desc' },
+      select: { activityRecordId: true, runId: true, tCO2e: true },
+    })
+    const latestRun = new Map<string, string>()
+    const totals = new Map<string, number>()
+    for (const result of results) {
+      const runId = latestRun.get(result.activityRecordId)
+      if (!runId) latestRun.set(result.activityRecordId, result.runId)
+      if (latestRun.get(result.activityRecordId) === result.runId && result.tCO2e != null) {
+        totals.set(result.activityRecordId, (totals.get(result.activityRecordId) ?? 0) + Number(result.tCO2e))
+      }
+    }
+    ledgerRows = rows.map((row) => ({ ...row, dashboardEmissions: totals.has(row.id) ? (totals.get(row.id) ?? 0).toFixed(3) : null }))
+  }
+  res.json({ rows: ledgerRows, total, page: q.page, pageSize, counts })
 }
 
 export const getActivity: RequestHandler = async (req, res) => {

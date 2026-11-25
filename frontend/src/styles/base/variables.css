@@ -1,75 +1,152 @@
 :root {
-  /* Colour */
-  --color-bg: #eeeef5;
-  --color-surface: #ffffff;
-  --color-surface-2: #fafafc;
-  --color-text: #16161f;
-  --color-text-2: #3a3a4a;
-  --color-label: #4a4a5c;
-  --color-muted: #6b6b7e;
-  --color-subtle: #9a9aab;
-  --color-border: #e8e8ef;
-  --color-border-strong: #d9d9e3;
+  /* Brand primitives: Tula Carbon */
+  --brand-peach-orange: #ffb27a;
+  --brand-orange: #ff8a00;
+  --brand-deep-orange: #ff5a00;
+  --brand-lavender: #d6b4ff;
+  --brand-violet: #9c58ff;
+  --brand-deep-violet: #6a00ff;
+  --brand-warm-sand: #fff4e6;
+  --brand-sunshine: #ffe39a;
+  --brand-coral: #ffb3b3;
+  --brand-lilac: #ebd9ff;
+  --brand-cool-gray: #9ca3af;
+  --brand-slate-purple: #7253b3;
+  --brand-peach-tint: #fff0e5;
+  --brand-orange-tint: #ffe7cc;
+  --brand-apricot-tint: #fff2d9;
+  --brand-lavender-tint: #f6edff;
+  --brand-violet-tint: #f0e6ff;
+  --brand-ultra-tint: #faf7ff;
 
-  --color-primary: #5b3df5;
-  --color-primary-hover: #4a2ce0;
-  --color-primary-soft: #f1edff;
-  --color-primary-border: #d8cffd;
+  /* Semantic colors: components should use these roles, not brand primitives. */
+  --surface-canvas: #fcfcfd;
+  --surface-default: #ffffff;
+  --surface-subtle: #faf7ff;
+  --surface-sidebar: #f8f6fa;
+  --surface-sidebar-hover: #f3ebff;
+  --surface-sidebar-active: #f3ebff;
+  --surface-selected: #f8f3ff;
+  --surface-table-header: #f7f5fa;
+  --text-primary: #201829;
+  --text-secondary: #62586d;
+  --text-tertiary: #8e8ea0;
+  --border-default: #e8e4ee;
+  --border-subtle: #e8e4ee;
+  --border-strong: #d9cfe2;
+  --action-primary: #5e00b3;
+  --action-hover: #4c008f;
+  --action-focus: #6a00ff;
+  --accent-brand: #ff8a00;
+  --feedback-success: #12b76a;
+  --feedback-error: #f04438;
+  --feedback-warning: #f79009;
+  --feedback-info: #2e90fa;
+  --feedback-neutral: #8e8ea0;
 
-  --color-success: #15803d;
-  --color-success-soft: #ecf8f0;
-  --color-success-border: #b9e3c7;
-  --color-warning: #c2610c;
-  --color-warning-soft: #fff5e8;
-  --color-warning-border: #f6d3a8;
-  --color-error: #d42a2a;
-  --color-error-soft: #fdeeee;
-  --color-error-border: #f5c4c4;
+  /* Backward-compatible aliases used by existing components. */
+  --color-bg: var(--surface-canvas);
+  --color-surface: var(--surface-default);
+  --color-surface-2: var(--surface-subtle);
+  --color-text: var(--text-primary);
+  --color-text-2: #3a3044;
+  --color-label: #51485a;
+  --color-muted: var(--text-secondary);
+  --color-subtle: var(--text-tertiary);
+  --color-border: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--action-primary);
+  --color-primary-hover: var(--action-hover);
+  --color-primary-soft: #f0e6ff;
+  --color-primary-border: #d6b4ff;
+  --color-success: #087a48;
+  --color-success-soft: #e9f8f0;
+  --color-success-border: #a6e5c6;
+  --color-warning: #9a4b00;
+  --color-warning-soft: #fff4e6;
+  --color-warning-border: #ffd6a7;
+  --color-error: #c43228;
+  --color-error-soft: #fff0ef;
+  --color-error-border: #ffc9c5;
+  --color-info: #175cd3;
+  --color-info-soft: #eff8ff;
+  --color-info-border: #b2ddff;
 
-  /* Chart colours: Scope 1 coral, Scope 2 electricity lavender, steam/heat and trends blue */
-  --series-1: #f06e6e;
-  --series-2: #a98bf5;
-  --series-3: #2f6dbf;
-  --chart-primary: #2f6dbf;
-  --chart-track: #e7e9f1;
-  --viz-grid: #ececf3;
+  /* Data visualization: distinguishable series with labels and patterns in UI. */
+  --series-1: #6a00ff;
+  --series-2: #ff8a00;
+  --series-3: #2e90fa;
+  --series-4: #12b76a;
+  --series-5: #7253b3;
+  --series-6: #f04438;
+  --chart-primary: var(--series-1);
+  --chart-track: #eeeaf2;
+  --viz-grid: #eeeaf2;
 
-  /* Type */
-  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, Menlo, Consolas, monospace;
-  --text-xs: 0.75rem;     /* 12px */
-  --text-sm: 0.8125rem;   /* 13px */
-  --text-md: 0.875rem;    /* 14px */
-  --text-lg: 1rem;        /* 16px */
-  --text-xl: 1.125rem;    /* 18px */
-  --text-2xl: 1.75rem;    /* 28px */
+  /* Typography */
+  --font-sans: 'IBM Plex Sans Variable', 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'IBM Plex Serif', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  --text-display-xl: 52px;
+  --text-display: 40px;
+  --text-h1: 32px;
+  --text-h2: 24px;
+  --text-h3: 20px;
+  --text-body-lg: 16px;
+  --text-body: 14px;
+  --text-ui: 13px;
+  --text-label: 12px;
+  --text-caption: 11px;
+  --text-xs: var(--text-label);
+  --text-sm: var(--text-ui);
+  --text-md: var(--text-body);
+  --text-lg: var(--text-body-lg);
+  --text-xl: 18px;
+  --text-2xl: 28px;
+  --line-display-xl: 58px;
+  --line-display: 46px;
+  --line-h1: 38px;
+  --line-h2: 30px;
+  --line-h3: 26px;
+  --line-body-lg: 24px;
+  --line-body: 20px;
+  --line-ui: 18px;
+  --line-label: 16px;
 
-  /* Spacing: one scale for every gap, padding and margin */
+  /* Spacing: 4px base, with named steps for layout and component work. */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 48px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
 
-  /* Shape */
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  /* Shape and elevation */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-pill: 999px;
-  --shadow-sm: 0 1px 2px rgb(22 22 31 / 0.04), 0 1px 3px rgb(22 22 31 / 0.04);
-  --shadow-md: 0 4px 16px rgb(22 22 31 / 0.06);
-  --shadow-lg: 0 12px 32px rgb(22 22 31 / 0.12);
-  --ring: 0 0 0 3px var(--color-primary-soft);
+  --shadow-sm: 0 1px 2px rgb(32 24 41 / 0.06);
+  --shadow-md: 0 4px 12px rgb(32 24 41 / 0.08);
+  --shadow-lg: 0 8px 24px rgb(32 24 41 / 0.12);
+  --ring: 0 0 0 3px rgb(106 0 255 / 0.2);
 
-  /* Layout */
-  --app-bg:
-    radial-gradient(1100px 520px at 88% -140px, #dcd1ff 0%, transparent 72%),
-    radial-gradient(800px 480px at 15% 110%, #e6e0fb 0%, transparent 70%),
-    linear-gradient(180deg, #f0eff8 0%, #e9e9f3 100%);
-  --sidebar-bg: #f3f2f9;
-  --sidebar-w: 248px;
+  /* Icon grid and layout foundations */
+  --icon-size-sm: 16px;
+  --icon-size-md: 20px;
+  --icon-size-lg: 24px;
+  --grid-desktop: 12;
+  --grid-tablet: 8;
+  --grid-mobile: 4;
+  --app-bg: var(--surface-canvas);
+  --sidebar-bg: var(--surface-sidebar);
+  --sidebar-w: 232px;
   --topbar-h: 64px;
   --card-pad: var(--space-4);
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { ChevronDown, ChevronRight, LogOut, Menu, Repeat, Search, UserCog } from 'lucide-react'
+import { ChevronDown, ChevronRight, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Repeat, Search, UserCog } from 'lucide-react'
 import { breadcrumbs, type NavGroup } from './nav'
 import { ErrorBoundary } from './ErrorBoundary'
 import { introShell, revealIn } from './motion'
@@ -23,18 +23,28 @@ export function Shell({ groups, home, context, counts, user, accountTo, onSwitch
   const { pathname } = useLocation()
   const [q, setQ] = useState('')
   const [navOpen, setNavOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const search = useRef<HTMLInputElement>(null)
   const menu = useRef<HTMLDetailsElement>(null)
   const appRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLElement>(null)
   useEffect(() => introShell(appRef.current), [])
   useEffect(() => revealIn(mainRef.current), [pathname])
+  useEffect(() => {
+    document.querySelector<HTMLElement>('.sidebar .nav-link.active')?.scrollIntoView({ block: 'nearest' })
+  }, [pathname, groups])
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); search.current?.focus() } }
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        if (collapsed) { setCollapsed(false); requestAnimationFrame(() => search.current?.focus()) }
+        else search.current?.focus()
+      }
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [collapsed])
   const closeMenus = () => { setNavOpen(false); if (menu.current) menu.current.open = false }
 
   const term = q.trim().toLowerCase()
@@ -42,7 +52,7 @@ export function Shell({ groups, home, context, counts, user, accountTo, onSwitch
   const crumbs = breadcrumbs(pathname, groups)
 
   return (
-    <div className="app" ref={appRef}>
+    <div className={`app${collapsed ? ' app--sidebar-collapsed' : ''}`} ref={appRef}>
       <header className="topbar">
         <button className="topbar__menu" aria-label="Open menu" aria-expanded={navOpen} onClick={() => setNavOpen((o) => !o)}><Menu size={20} /></button>
         <Link to={home} className="topbar__brand" aria-label="Tula Carbon home"><img src="/Assets/Logos/Logo.png" alt="Tula Carbon" /></Link>
@@ -62,19 +72,25 @@ export function Shell({ groups, home, context, counts, user, accountTo, onSwitch
         </details>
       </header>
 
-      <aside className={`sidebar ${navOpen ? 'sidebar--open' : ''}`}>
-        <label className="sidebar__search">
-          <Search size={15} />
-          <input ref={search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search menu…" aria-label="Search menu" />
-          <kbd>⌘K</kbd>
-        </label>
-        <nav>
+      <aside className={`sidebar${navOpen ? ' sidebar--open' : ''}${collapsed ? ' sidebar--collapsed' : ''}`}>
+        <div className="sidebar__top">
+          <button className="sidebar__collapse" type="button" aria-label={collapsed ? 'Expand sidebar navigation' : 'Collapse sidebar navigation'} aria-expanded={!collapsed} onClick={() => { setQ(''); setCollapsed((value) => !value) }}>
+            {collapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
+          </button>
+          <label className="sidebar__search">
+            <Search size={16} />
+            <input ref={search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search menu…" aria-label="Search menu" />
+            <kbd>⌘K</kbd>
+          </label>
+          <button className="sidebar__search-trigger" type="button" aria-label="Search menu" title="Search menu" onClick={() => { setCollapsed(false); requestAnimationFrame(() => search.current?.focus()) }}><Search size={19} /></button>
+        </div>
+        <nav aria-label="Primary navigation">
           {shown.map((g) => (
             <div key={g.label} className="sidebar__group">
               <p className="sidebar__label">{g.label}</p>
               {g.items.map(({ to, label, icon: Icon }) => (
-                <NavLink key={to} to={to} end={to === '/' || to === '/activities/new'} className="nav-link" onClick={closeMenus}>
-                  <Icon size={17} strokeWidth={1.8} /> {label}
+                <NavLink key={to} to={to} end={to === '/' || to === '/activities/new'} className="nav-link" title={collapsed ? label : undefined} aria-label={collapsed ? label : undefined} onClick={closeMenus}>
+                  <Icon size={19} strokeWidth={1.85} /> <span className="nav-link__label">{label}</span>
                   {!!counts?.[to] && <span className="nav-link__count" aria-label={`${counts[to]} waiting`}>{counts[to]}</span>}
                 </NavLink>
               ))}

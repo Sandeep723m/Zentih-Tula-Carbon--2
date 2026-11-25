@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import '@fontsource-variable/ibm-plex-sans'
 import 'lenis/dist/lenis.css'
 import './styles/index.css'
 import { startSmoothScroll } from './components/smoothScroll'
