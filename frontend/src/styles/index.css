@@ -34,6 +34,7 @@
 @import './pages/boundary/boundary.css';
 @import './pages/platform/platform.css';
 @import './pages/activity-types/activity-types.css';
+@import './layout/responsive.css';
 
 @import './components/test-switch.css';
 

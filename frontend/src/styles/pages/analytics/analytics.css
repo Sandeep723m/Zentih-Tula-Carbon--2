@@ -3,7 +3,7 @@
 @media (max-width: 1180px) { .an-grid { grid-template-columns: 1fr; } }
 
 /* Soft tinted card that holds white inner tiles */
-.an-card { display: flex; flex-direction: column; gap: var(--space-5); background: linear-gradient(180deg, #fbfbfe 0%, #f3f4f9 100%); }
+.an-card { display: flex; flex-direction: column; gap: var(--space-5); background: var(--surface-default); }
 .an-card > * + * { margin-top: 0; }
 .an-card__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
 .an-card__heading { flex: 1 1 200px; min-width: 0; }

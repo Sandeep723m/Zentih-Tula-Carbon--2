@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { Activity, ArrowDown, ArrowRight, ArrowUp, ArrowUpRight, ArrowUpDown, BadgeCheck, Building2, CalendarDays, ChartColumn, Check, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, Clock3, Download, Eye, FilePenLine, Hash, ListFilter, Plus, Search, Send, Star, X, Zap, type LucideIcon } from 'lucide-react'
@@ -23,7 +23,14 @@ const pageNumbers = (current: number, last: number): Array<number | 'ellipsis'> 
 
 const DOT_MARK_HEIGHTS = [2, 3, 4, 6, 4, 3, 5, 4, 3, 5, 4, 3, 6, 4, 3, 5]
 function DotMark() {
-  return <svg className="dashboard-metric__mark" viewBox="0 0 116 52" aria-hidden="true">{DOT_MARK_HEIGHTS.flatMap((height, column) => Array.from({ length: 7 }, (_, row) => <circle key={`${column}-${row}`} cx={4 + column * 7} cy={4 + row * 7} r="1.65" className={row >= 7 - height ? 'is-active' : ''} />))}</svg>
+  return <svg className="dashboard-metric__mark" viewBox="0 0 116 52" aria-hidden="true">{DOT_MARK_HEIGHTS.flatMap((height, column) => Array.from({ length: 7 }, (_, row) => {
+    const snakeStep = row * DOT_MARK_HEIGHTS.length + (row % 2 ? DOT_MARK_HEIGHTS.length - 1 - column : column)
+    const motionStyle = {
+      '--dot-rest-delay': `${column * 115 + row * 24}ms`,
+      '--dot-snake-delay': `${snakeStep * 22}ms`,
+    } as CSSProperties
+    return <circle key={`${column}-${row}`} cx={4 + column * 7} cy={4 + row * 7} r="1.65" className={row >= 7 - height ? 'is-active' : ''} style={motionStyle} />
+  }))}</svg>
 }
 
 function ActivityMetricCard({ tone, icon: Icon, title, value, detail, to }: { tone: string; icon: LucideIcon; title: string; value: number; detail: string; to: string }) {
@@ -206,7 +213,7 @@ export function ActivityDashboardPage() {
         </div>
         <div className="dashboard-head__controls">
           <div className="dashboard-head__actions">
-            {me?.permissions.includes('report.read') && <a className="button button--warm" href="https://tula-karbon-ze-d1.vercel.app/" target="_blank" rel="noopener noreferrer"><ChartColumn size={16} /> View analytics</a>}
+            <a className="button button--ghost dashboard-analytics-link" href="https://tula-karbon-ze-d1.vercel.app/" target="_blank" rel="noopener noreferrer"><ChartColumn size={16} /> View analytics</a>
             {canWrite && <Link className="button" to="/activities/new"><Plus size={16} /> Add activity</Link>}
           </div>
         </div>

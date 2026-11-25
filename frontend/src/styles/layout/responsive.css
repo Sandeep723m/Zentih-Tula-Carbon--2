@@ -1,0 +1,93 @@
+/* Shared responsive behavior for tenant and platform pages. Tables keep their
+   column layout and scroll inside their own frame instead of widening the page. */
+.main,
+.main > *,
+.card,
+.section,
+.table-wrap,
+.table-wrap--bordered { min-width: 0; }
+
+.table-wrap { max-width: 100%; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.table-wrap:focus-visible { outline: 2px solid var(--action-focus); outline-offset: 2px; }
+.filters { min-width: 0; }
+.filters .input { max-width: 100%; }
+.page__header--row > * { min-width: 0; }
+.page__actions { min-width: 0; }
+.dialog__actions { flex-wrap: wrap; }
+
+@media (max-width: 960px) {
+  .main { padding-right: clamp(16px, 3vw, 28px); padding-left: clamp(16px, 3vw, 28px); }
+  .viz-grid-layout { grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); }
+  .filters__end { margin-left: 0; }
+  .card, .dashboard-ledger { max-width: 100%; }
+}
+
+@media (max-width: 720px) {
+  .page__header--row { align-items: stretch; }
+  .page__header--row > .button,
+  .page__header--row > .page__actions { align-self: flex-start; }
+  .page__actions { flex-wrap: wrap; }
+  .filters .input,
+  .filters .search-input { flex: 1 1 200px; min-width: 0; }
+  .filters .field--xs,
+  .filters .field--sm { flex: 1 1 180px; width: auto; }
+  .dl { grid-template-columns: minmax(0, 1fr); gap: 4px var(--space-3); }
+  .dl dt { margin-top: var(--space-2); }
+  .viz-grid-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  html { scrollbar-gutter: auto; }
+  .main { padding: 14px 12px 28px; }
+  .main > * + * { margin-top: 16px; }
+  .main > .crumbs + * { margin-top: 10px; }
+  .topbar { min-width: 0; }
+  .topbar__context { gap: 6px; }
+  .topbar__context .pill { min-width: 0; }
+  .topbar__context .pill__text { max-width: clamp(64px, 24vw, 120px); }
+  .usermenu { flex: 0 0 auto; }
+  .main h1 { overflow-wrap: anywhere; font-size: clamp(1.4rem, 7vw, 1.8rem); }
+  .page__header--row { gap: 12px; }
+  .page__title { overflow-wrap: anywhere; }
+  .page__subtitle { font-size: var(--text-sm); line-height: 1.5; }
+  .page__actions > .button,
+  .page__header--row > .button { width: 100%; justify-content: center; }
+  .button { max-width: 100%; }
+  .filters { align-items: stretch; }
+  .filters .input,
+  .filters .search-input,
+  .filters .field--xs,
+  .filters .field--sm { flex: 1 1 100%; width: 100%; }
+  .filters .input { min-width: 0; }
+  .filters__end { width: 100%; }
+  .card { padding: var(--space-4); }
+  .card > * { min-width: 0; }
+  .table { min-width: 640px; }
+  .dashboard-table { min-width: 1200px; }
+  .dashboard-ledger__head { padding: 14px 12px; }
+  .dashboard-ledger__foot { align-items: flex-start; padding: 12px; }
+  .dashboard-ledger__range { width: 100%; }
+  .dashboard-ledger__pagination { width: 100%; justify-content: space-between; }
+  .dashboard-bulk-toolbar { position: sticky; bottom: 8px; max-width: calc(100% - 16px); }
+  .dashboard-bulk-toolbar .button { flex: 1 1 auto; }
+  .dashboard-bulk-count { flex: 1 0 100%; text-align: center; }
+  .dialog__body { padding: 16px; }
+  .dialog__actions > .button { flex: 1 1 auto; justify-content: center; }
+  .picker { width: 100%; min-width: 0; }
+  .sticky-actions { padding: 12px 0 max(8px, env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 380px) {
+  .topbar { gap: 4px; padding-right: 8px; padding-left: 8px; }
+  .topbar__brand img { width: 64px; height: 22px; }
+  .topbar__context .pill { padding-right: 6px; padding-left: 6px; font-size: 12px; }
+  .topbar__context .pill__text { max-width: 68px; }
+  .topbar__context .pill svg { width: 13px; }
+  .main { padding-right: 10px; padding-left: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table tbody tr,
+  .dashboard-metric,
+  .dashboard-row-action { transition: none !important; }
+}
