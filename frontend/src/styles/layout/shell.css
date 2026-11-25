@@ -21,8 +21,8 @@
   border-bottom: 1px solid var(--color-border);
 }
 .topbar__brand { display: flex; align-items: center; flex-shrink: 0; width: calc(var(--sidebar-w) - var(--space-5) - var(--space-4)); }
-/* Logo.png has wide transparent margins; crop to the artwork. */
-.topbar__brand img { display: block; width: 196px; height: 32px; object-fit: cover; object-position: center; }
+/* The logo asset is a 3:1 lockup; contain it so neither edge nor vertical detail is cropped. */
+.topbar__brand img { display: block; width: 180px; height: 60px; object-fit: contain; object-position: left center; }
 .topbar__context { display: flex; align-items: center; gap: var(--space-2); flex: 1; min-width: 0; }
 .topbar__menu { display: none; padding: 6px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--color-text); cursor: pointer; }
 .topbar__menu:hover { background: var(--color-bg); }
@@ -151,7 +151,7 @@ a.pill:hover, summary.pill:hover { border-color: var(--color-border-strong); bac
   .topbar { gap: var(--space-2); padding: 0 var(--space-4); }
   .topbar__menu { display: inline-flex; }
   .topbar__brand { width: auto; }
-  .topbar__brand img { width: 150px; height: 26px; }
+  .topbar__brand img { width: 150px; height: 50px; }
   .sidebar {
     position: fixed; z-index: 45; top: var(--topbar-h); bottom: 0; left: 0;
     width: 280px; height: auto; box-shadow: var(--shadow-md);
@@ -175,7 +175,7 @@ a.pill:hover, summary.pill:hover { border-color: var(--color-border-strong); bac
 @media (max-width: 640px) {
   .pill--hide-sm, .usermenu__name, .pill--user > svg { display: none; }
   .topbar { gap: 6px; padding: 0 10px; }
-  .topbar__brand img { width: 112px; height: 22px; }
+  .topbar__brand img { width: 112px; height: 38px; }
   .pill { gap: 6px; padding: 0 9px; }
   .topbar__context .pill { flex-shrink: 1; }
   .usermenu summary { padding-left: 0; }

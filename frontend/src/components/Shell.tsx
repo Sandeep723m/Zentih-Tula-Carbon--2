@@ -55,7 +55,7 @@ export function Shell({ groups, home, context, counts, user, accountTo, onSwitch
     <div className={`app${collapsed ? ' app--sidebar-collapsed' : ''}`} ref={appRef}>
       <header className="topbar">
         <button className="topbar__menu" aria-label="Open menu" aria-expanded={navOpen} onClick={() => setNavOpen((o) => !o)}><Menu size={20} /></button>
-        <Link to={home} className="topbar__brand" aria-label="Tula Carbon home"><img src="/Assets/Logos/Logo.png" alt="Tula Carbon" /></Link>
+        <Link to={home} className="topbar__brand" aria-label="Tula Carbon home"><img src="/Assets/Logos/Tula%20Carbon%20Dot%20Grid%20Logo.png" alt="Tula Carbon" /></Link>
         <div className="topbar__context">{context}</div>
         <details className="usermenu" ref={menu}>
           <summary className="pill pill--user">

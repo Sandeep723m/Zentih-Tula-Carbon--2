@@ -3,8 +3,8 @@ body:has(.page--narrow) { min-height: 100vh; }
 body:has(.page--narrow)::before { content: ''; position: fixed; inset: 0; z-index: -1; background: var(--app-bg); pointer-events: none; }
 .page--narrow { display: flex; flex-direction: column; justify-content: center; max-width: 440px; min-height: 100vh; }
 .page--narrow::before {
-  content: ''; display: block; height: 40px; margin-bottom: var(--space-5);
-  background: url('/Assets/Logos/Logo.png') no-repeat center / 250px auto;
+  content: ''; display: block; height: 60px; margin-bottom: var(--space-5);
+  background: url('/Assets/Logos/Tula%20Carbon%20Dot%20Grid%20Logo.png') no-repeat center / 180px 60px;
 }
 .page--narrow .page__header { text-align: center; }
 .page--narrow .page__title { font-size: 1.5rem; }
