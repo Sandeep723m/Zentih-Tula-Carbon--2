@@ -1,0 +1,75 @@
+:root {
+  /* Colour */
+  --color-bg: #eeeef5;
+  --color-surface: #ffffff;
+  --color-surface-2: #fafafc;
+  --color-text: #16161f;
+  --color-text-2: #3a3a4a;
+  --color-label: #4a4a5c;
+  --color-muted: #6b6b7e;
+  --color-subtle: #9a9aab;
+  --color-border: #e8e8ef;
+  --color-border-strong: #d9d9e3;
+
+  --color-primary: #5b3df5;
+  --color-primary-hover: #4a2ce0;
+  --color-primary-soft: #f1edff;
+  --color-primary-border: #d8cffd;
+
+  --color-success: #15803d;
+  --color-success-soft: #ecf8f0;
+  --color-success-border: #b9e3c7;
+  --color-warning: #c2610c;
+  --color-warning-soft: #fff5e8;
+  --color-warning-border: #f6d3a8;
+  --color-error: #d42a2a;
+  --color-error-soft: #fdeeee;
+  --color-error-border: #f5c4c4;
+
+  /* Chart colours: Scope 1 coral, Scope 2 electricity lavender, steam/heat and trends blue */
+  --series-1: #f06e6e;
+  --series-2: #a98bf5;
+  --series-3: #2f6dbf;
+  --chart-primary: #2f6dbf;
+  --chart-track: #e7e9f1;
+  --viz-grid: #ececf3;
+
+  /* Type */
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-md: 0.875rem;    /* 14px */
+  --text-lg: 1rem;        /* 16px */
+  --text-xl: 1.125rem;    /* 18px */
+  --text-2xl: 1.75rem;    /* 28px */
+
+  /* Spacing: one scale for every gap, padding and margin */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Shape */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgb(22 22 31 / 0.04), 0 1px 3px rgb(22 22 31 / 0.04);
+  --shadow-md: 0 4px 16px rgb(22 22 31 / 0.06);
+  --shadow-lg: 0 12px 32px rgb(22 22 31 / 0.12);
+  --ring: 0 0 0 3px var(--color-primary-soft);
+
+  /* Layout */
+  --app-bg:
+    radial-gradient(1100px 520px at 88% -140px, #dcd1ff 0%, transparent 72%),
+    radial-gradient(800px 480px at 15% 110%, #e6e0fb 0%, transparent 70%),
+    linear-gradient(180deg, #f0eff8 0%, #e9e9f3 100%);
+  --sidebar-bg: #f3f2f9;
+  --sidebar-w: 248px;
+  --topbar-h: 64px;
+  --card-pad: var(--space-4);
+}

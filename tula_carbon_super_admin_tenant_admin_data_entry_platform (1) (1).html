@@ -1,0 +1,2399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tula Carbon — Super Admin, Tenant Admin & Per-Category Data Entry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F5F6; --panel:#FFFFFF; --ink:#12262D; --muted:#5B6E75; --line:#D5DEE1;
+  --teal:#0E6B6E; --teal-d:#0A5254; --teal-soft:#DCEFEF;
+  --amber:#8A5A00; --amber-soft:#FBF0D9; --amber-line:#E3B655;
+  --red:#A4322A; --red-soft:#F8E1DD; --green:#25693F; --green-soft:#DDF0E4;
+  --indigo:#2B4C7E; --indigo-soft:#E3ECF7;
+  --purple:#5B3A7D; --purple-soft:#EFE8F7;
+  --r:8px;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--paper);color:var(--ink);font-size:15px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid #1B8FBF;outline-offset:2px}
+
+/* Top Bar */
+.top{background:var(--ink);color:#fff;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:12px 24px;position:sticky;top:0;z-index:30}
+.brand{font-weight:700;font-size:17px;letter-spacing:.2px;display:flex;align-items:center;gap:10px}
+.brand-dot{width:10px;height:10px;border-radius:50%;background:#35B8BD;display:inline-block}
+.brand small{font-weight:400;opacity:.75;font-size:13px}
+.role-tabs{display:flex;background:rgba(255,255,255,.1);border-radius:999px;padding:3px;gap:4px;margin-left:12px}
+.role-tab{background:transparent;border:0;color:#CFE3E5;padding:5px 14px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.role-tab:hover{color:#fff}
+.role-tab.active{background:#fff;color:var(--ink)}
+.role-tab.super.active{background:#F5C249;color:var(--ink)}
+.badges{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.badge{border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:3px 12px;font-size:12.5px}
+.badge.on{background:#fff;color:var(--ink);border-color:#fff;font-weight:600}
+.badge.super{background:#FBF0D9;color:var(--amber);border-color:#E3B655;font-weight:700}
+.badge.tenant{background:#DCEFEF;color:var(--teal-d);border-color:#8FB3B5;font-weight:700}
+.badge.operator{background:#EFE8F7;color:var(--purple);border-color:#C7B3DF;font-weight:700}
+.badge.lock{background:var(--amber-soft);color:var(--amber);border-color:var(--amber-line);font-weight:600}
+.link{background:none;border:0;color:#CFE3E5;text-decoration:underline;cursor:pointer;padding:2px 4px;font-size:13px}
+
+/* Layout */
+.app{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;max-width:1540px;margin:0 auto;padding:24px 24px 70px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:26px}
+h1{font-size:23px;line-height:1.25;margin:0 0 6px}
+h2{font-size:17px;margin:22px 0 8px}
+h3{font-size:15.5px;margin:0 0 6px}
+.lead{color:var(--muted);margin:0 0 20px;max-width:78ch}
+
+/* Subnav Tabs */
+.subnav{display:flex;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:20px}
+.subtab{background:var(--paper);border:1px solid var(--line);color:var(--ink);padding:7px 14px;border-radius:6px;font-size:13.5px;font-weight:600;cursor:pointer}
+.subtab:hover{border-color:var(--teal)}
+.subtab.active{background:var(--teal);border-color:var(--teal);color:#fff}
+
+/* Login Gateway */
+.login-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;margin-top:16px}
+.login-card{border:2px solid var(--line);border-radius:10px;padding:22px;background:#fff;display:flex;flex-direction:column;gap:14px}
+.login-card.super-card{border-top:5px solid #D99B16}
+.login-card.tenant-card{border-top:5px solid var(--teal)}
+.login-card.op-card{border-top:5px solid var(--purple)}
+.role-pill{display:inline-block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:3px 10px;border-radius:999px;width:fit-content}
+.role-pill.super{background:var(--amber-soft);color:var(--amber)}
+.role-pill.tenant{background:var(--teal-soft);color:var(--teal-d)}
+.role-pill.op{background:var(--purple-soft);color:var(--purple)}
+
+/* Banners & Alerts */
+.lockbar{background:var(--amber-soft);border:1px solid var(--amber-line);color:var(--amber);border-radius:var(--r);padding:10px 14px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-weight:500}
+.lockbar button{margin-left:auto}
+.infobar{background:var(--teal-soft);border:1px solid #9ECBCB;color:var(--teal-d);border-radius:var(--r);padding:10px 14px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:13.5px}
+.warnbar{background:var(--red-soft);border:1px solid #E3A9A1;color:var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:18px;font-size:13.5px;font-weight:500}
+
+/* Forms */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px 20px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px 18px}
+label.f{display:block;font-weight:600;font-size:13.5px;margin-bottom:4px}
+.hint{display:block;font-weight:400;color:var(--muted);font-size:12px}
+input[type=text],input[type=number],input[type=date],input[type=email],input[type=file],select{width:100%;padding:8px 10px;border:1px solid #AEBCC1;border-radius:6px;background:#fff;min-height:38px}
+input[type=file]{padding:5px 8px;font-size:13px;cursor:pointer}
+input:disabled,select:disabled{background:#EDF1F2;color:#7B8B91;cursor:not-allowed}
+.err{color:var(--red);font-size:13px;margin-top:4px;min-height:1px}
+.row-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
+.row-actions .sp{flex:1}
+
+/* Buttons */
+.btn{border:1px solid var(--teal);background:var(--teal);color:#fff;border-radius:6px;padding:8px 16px;font-weight:600;cursor:pointer;min-height:38px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover:not(:disabled){background:var(--teal-d)}
+.btn.sec{background:#fff;color:var(--teal-d)}
+.btn.sec:hover:not(:disabled){background:var(--teal-soft)}
+.btn.amber{background:#B87A00;border-color:#B87A00;color:#fff}
+.btn.amber:hover:not(:disabled){background:#946200}
+.btn.purple{background:var(--purple);border-color:var(--purple);color:#fff}
+.btn.purple:hover:not(:disabled){background:#462B62}
+.btn.sm{padding:5px 11px;min-height:32px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.iconbtn{background:none;border:1px solid transparent;color:var(--red);cursor:pointer;border-radius:6px;padding:4px 8px;font-size:13px}
+.iconbtn:hover{background:var(--red-soft)}
+.iconbtn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Approach Cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.card{position:relative;border:2px solid var(--line);border-radius:10px;padding:16px;background:#fff;cursor:pointer;display:flex;flex-direction:column;gap:8px}
+.card:hover{border-color:#8FB3B5}
+.card input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.card:has(input:checked){border-color:var(--teal);background:#F5FBFB;box-shadow:0 0 0 1px var(--teal)}
+.card h3{margin:0;font-size:17px}
+.card p{margin:0;color:var(--muted);font-size:13.5px}
+.viz{display:flex;gap:10px;padding:10px;background:var(--paper);border-radius:8px;justify-content:space-between}
+.viz figure{margin:0;text-align:center;flex:1}
+.viz figcaption{font-size:11px;color:var(--muted);line-height:1.25;margin-top:4px}
+.viz b{display:block;font-size:13px;color:var(--ink)}
+
+/* Summary Chips */
+.sumrow{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 16px}
+.chip{background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:4px 13px;font-size:13px}
+.chip b{font-weight:700}
+.chip.bad{background:var(--red-soft);border-color:#E3A9A1;color:var(--red)}
+.chip.s1{background:#E8F4F4;border-color:#9ECBCB;color:var(--teal-d)}
+.chip.s2{background:#E3ECF7;border-color:#A5C0E5;color:var(--indigo)}
+.chip.s3{background:#FBF0D9;border-color:#E3B655;color:var(--amber)}
+
+/* Tables */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{background:#E8EEF0;text-align:left;padding:8px 8px;font-weight:600;white-space:nowrap;border-bottom:1px solid var(--line);vertical-align:bottom}
+th.cond{background:var(--amber-soft);border-bottom:2px solid var(--amber-line)}
+th.auto{background:#EEF1F2;color:var(--muted);font-style:italic}
+th small{display:block;font-weight:400;color:var(--muted);font-size:11.5px}
+td{padding:6px 8px;border-bottom:1px solid #E6ECEE;vertical-align:middle}
+td input[type=text],td input[type=number],td select{min-height:34px;padding:5px 8px;font-size:13.5px}
+td.ro{background:#F6F8F9;color:#3E5159}
+.chk{display:inline-flex;align-items:center;gap:5px;cursor:pointer;padding:4px 8px;border:1px solid #AEBCC1;border-radius:999px;background:#fff;font-size:13px;white-space:nowrap}
+.chk input{margin:0;width:15px;height:15px;accent-color:var(--teal)}
+.chk:has(input:checked){background:var(--teal-soft);border-color:var(--teal);font-weight:600}
+.chk:has(input:disabled){opacity:.6;cursor:not-allowed}
+.pct{font-weight:700;text-align:right;white-space:nowrap}
+.st{font-weight:600;font-size:12.5px;white-space:nowrap}
+.st.ok{color:var(--green)} .st.no{color:var(--red)}
+.empty{padding:32px 20px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:15.5px;margin-bottom:4px}
+.tools{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 0;align-items:center}
+
+/* Badges & Tags */
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;background:var(--paper);border:1px solid var(--line);white-space:nowrap}
+.tag.s1{background:#E8F4F4;color:var(--teal-d);border-color:#9ECBCB}
+.tag.s2{background:#E3ECF7;color:var(--indigo);border-color:#A5C0E5}
+.tag.s3{background:#FBF0D9;color:var(--amber);border-color:#E3B655}
+.tag.perm{background:#DDF0E4;color:var(--green);border-color:#9FD3B2}
+.tag.perm.off{background:#F2F5F6;color:var(--muted);border-color:var(--line);text-decoration:line-through}
+.tag.op{background:var(--purple-soft);color:var(--purple);border-color:#C7B3DF}
+.tag.ai{background:#E6F4F1;color:var(--teal-d);border-color:#8CC5C7}
+.tag.site{background:var(--amber-soft);color:var(--amber);border-color:var(--amber-line)}
+.tag.supp{background:var(--indigo-soft);color:var(--indigo);border-color:#A5C0E5}
+.tag.match-ok{background:#DDF0E4;color:var(--green);border-color:#9FD3B2}
+.tag.match-warn{background:#FBF0D9;color:var(--amber);border-color:#E3B655}
+.tag.match-bad{background:#F8E1DD;color:var(--red);border-color:#E3A9A1}
+
+/* Modal for Scope Categories & Methods */
+.modal-backdrop{position:fixed;inset:0;background:rgba(18,38,45,.55);display:grid;place-items:center;padding:16px;z-index:50}
+.modal-backdrop[hidden]{display:none}
+.modal{background:#fff;border-radius:10px;border:1px solid var(--line);max-width:1100px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 45px rgba(0,0,0,.25)}
+.modal-head{padding:16px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
+.modal-head h2{margin:0;font-size:18.5px}
+.modal-nav{padding:10px 24px;background:#F4F7F8;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0}
+.m-pill{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:5px 13px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.m-pill:hover{border-color:var(--teal)}
+.m-pill.active{background:var(--teal);border-color:var(--teal);color:#fff}
+.modal-body{padding:20px 24px;overflow-y:auto;display:block;flex:1 1 auto;min-height:0}
+.modal-foot{padding:14px 24px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;background:var(--paper);border-radius:0 0 10px 10px;flex-shrink:0}
+.scope-box{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:20px;background:#fff}
+.scope-box:last-child{margin-bottom:0}
+.scope-box-head{background:#E8EEF0;padding:11px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;font-weight:700;font-size:14.5px}
+.scope-box-head.s2h{background:var(--indigo-soft);color:var(--indigo)}
+.scope-box-head.s3h{background:var(--amber-soft);color:var(--amber)}
+.cat-group-hdr{padding:7px 16px;background:#FBF7EE;border-bottom:1px solid #EFE4CC;font-size:12px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.4px}
+.cat-cols-hdr{display:grid;grid-template-columns:minmax(260px,1.7fr) minmax(240px,1fr);gap:14px;padding:7px 16px;background:#F4F7F8;border-bottom:1px solid var(--line);font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+.cat-list{display:block}
+.cat-row{display:grid;grid-template-columns:minmax(260px,1.7fr) minmax(240px,1fr);gap:14px;align-items:center;padding:10px 16px;border-bottom:1px solid #EDF1F2;font-size:13.5px;background:#fff}
+.cat-row:last-child{border-bottom:0}
+.cat-row:hover{background:#F8FAFB}
+.cat-row.disabled-cat{background:#FAFBFB}
+.cat-row.disabled-cat .cat-left{opacity:.72}
+.cat-left{display:flex;align-items:flex-start;gap:10px;cursor:pointer;line-height:1.4}
+.cat-left input{margin-top:3px;width:16px;height:16px;accent-color:var(--teal);flex:none}
+.cat-row select{min-height:34px;padding:5px 8px;font-size:13px;width:100%}
+
+/* Data Entry Workspace */
+.de-layout{display:grid;grid-template-columns:330px minmax(0,1fr);gap:20px;align-items:start}
+.cat-nav{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.cat-nav-group{border-bottom:1px solid var(--line)}
+.cat-nav-group:last-child{border-bottom:0}
+.cat-nav-title{padding:9px 14px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;background:#E8EEF0;color:var(--ink)}
+.cat-nav-item{width:100%;text-align:left;background:#fff;border:0;border-bottom:1px solid #F0F4F5;padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
+.cat-nav-item:hover{background:#F5FBFB}
+.cat-nav-item.active{background:var(--teal-soft);color:var(--teal-d);font-weight:700;border-left:4px solid var(--teal)}
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+.kpi-card{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi-card .k-lbl{font-size:12px;color:var(--muted)}
+.kpi-card .k-val{font-size:19px;font-weight:700;color:var(--ink);margin-top:2px}
+.kpi-card.hi{background:var(--teal-soft);border-color:#9ECBCB}
+.kpi-card.hi .k-val{color:var(--teal-d)}
+.kpi-card.mkt{background:var(--indigo-soft);border-color:#A5C0E5}
+.kpi-card.mkt .k-val{color:var(--indigo)}
+.calc-preview{background:var(--teal-soft);border:1px solid #9ECBCB;border-radius:8px;padding:12px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-top:14px}
+.dropzone{border:2px dashed #9AB0B6;border-radius:8px;padding:16px;text-align:center;background:#F8FAFB;margin-top:14px}
+.ai-box{background:#F4FAFA;border:1px solid #B7DCDD;border-radius:8px;padding:12px 14px;margin-top:14px}
+.site-calc-box{background:#FDF9F1;border:1px solid #E3B655;border-radius:8px;padding:14px;margin-top:14px}
+.supp-box{background:#F3F7FC;border:1px solid #A5C0E5;border-radius:8px;padding:14px;margin-top:14px}
+.ev-link{color:var(--teal-d);font-weight:600;text-decoration:underline;cursor:pointer;background:none;border:0;padding:0;font-size:12.5px}
+.ev-link:hover{color:var(--teal)}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 20px;border-radius:8px;z-index:60;max-width:90vw;box-shadow:0 8px 20px rgba(0,0,0,.2)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-width:960px){
+  .de-layout{grid-template-columns:1fr}
+  .cat-cols-hdr{display:none}
+  .cat-row{grid-template-columns:1fr;gap:8px}
+  .app{padding:16px}
+  .panel{padding:18px}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="brand-dot"></span>
+    <span>Tula Carbon<small id="roleSub">Login Gateway</small></span>
+    <div class="role-tabs" id="roleSwitcher">
+      <button type="button" class="role-tab" data-mode="login">Login Gateway</button>
+      <button type="button" class="role-tab super" data-mode="super">Super Admin</button>
+      <button type="button" class="role-tab" data-mode="tenant">Tenant Admin</button>
+      <button type="button" class="role-tab" data-mode="operator">Data Entry Operator</button>
+    </div>
+  </div>
+  <div class="badges" id="badges"></div>
+</header>
+
+<div class="app">
+  <main id="view" tabindex="-1"></main>
+</div>
+
+<!-- Modal: Add / Configure Facility, Scopes, GHG Categories & Methods (Tenant Admin Only) -->
+<div class="modal-backdrop" id="catModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="catModalTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="catModalTitle">Configure Facility, GHG Protocol Categories &amp; Calculation Methods</h2>
+        <div class="hint" id="catModalSub">Navigate across Scope 1, Scope 2, and Scope 3 below to tick applicable GHG Protocol categories and choose their calculation methods.</div>
+      </div>
+      <button type="button" class="btn sec sm" id="closeCatModal">Done</button>
+    </div>
+    <div class="modal-nav" id="catModalNav"></div>
+    <div class="modal-body" id="catModalBody"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="saveCatModal">Save Facility &amp; Category Configuration</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+"use strict";
+
+/* ---------- Master Reference Data ---------- */
+const COUNTRIES = ["India","Kenya","Nigeria","South Africa","Egypt","Ghana","United States","United Kingdom","Germany","France","Netherlands","Australia","Canada","Singapore","United Arab Emirates","Japan","China","Brazil"];
+const GRIDS = [
+  {name:"India - National Average", ef:0.716},
+  {name:"India - Northern Grid", ef:0.742},
+  {name:"India - Western Grid", ef:0.735},
+  {name:"India - Southern Grid", ef:0.688},
+  {name:"India - Eastern Grid", ef:0.810},
+  {name:"India - North-Eastern Grid", ef:0.615},
+  {name:"UK - DEFRA", ef:0.207},
+  {name:"eGRID - CAMX", ef:0.225},
+  {name:"eGRID - ERCT", ef:0.371},
+  {name:"Kenya - National Grid", ef:0.112},
+  {name:"South Africa - National Grid", ef:0.928},
+  {name:"IEA - Country Average", ef:0.450}
+];
+
+const FRAMEWORKS = [
+  "GHG Protocol Corporate Standard",
+  "BRSR Core (SEBI India)",
+  "CSRD / ESRS E1 (EU)",
+  "ISO 14064-1:2018"
+];
+
+const PERIOD_MONTHS = [
+  "2025-04 (Apr 2025)","2025-05 (May 2025)","2025-06 (Jun 2025)",
+  "2025-07 (Jul 2025)","2025-08 (Aug 2025)","2025-09 (Sep 2025)",
+  "2025-10 (Oct 2025)","2025-11 (Nov 2025)","2025-12 (Dec 2025)",
+  "2026-01 (Jan 2026)","2026-02 (Feb 2026)","2026-03 (Mar 2026)"
+];
+
+const ACTIVITY_UNITS = [
+  "Liters","m3","kg","tonnes","kWh","MWh","GJ","km","tonne-km","passenger-km","USD","INR","units","room-nights","FTE-days","hectares"
+];
+
+const APPROACHES = {
+  "Equity Share": {
+    code:"EQUITY", field:"Equity Share %",
+    lead:"Consolidate emissions in proportion to equity ownership percentage.",
+    viz:[["Subsidiary","80% owned",80],["Joint venture","operated",50],["Minority stake","25% owned",25]]
+  },
+  "Operational Control": {
+    code:"OPERATIONAL", field:"Operational Control",
+    lead:"Consolidate 100% of facilities where the organization directs operating policies, 0% otherwise.",
+    viz:[["Subsidiary","80% owned",100],["Joint venture","operated",100],["Minority stake","25% owned",0]]
+  },
+  "Financial Control": {
+    code:"FINANCIAL", field:"Financial Control",
+    lead:"Consolidate 100% of facilities where the organization directs financial & operating policies, 0% otherwise.",
+    viz:[["Subsidiary","80% owned",100],["Joint venture","not consolidated",0],["Minority stake","25% owned",0]]
+  }
+};
+
+/* Calculation Methods per Scope */
+const SCOPE1_METHODS = [
+  {id:"S1_FUEL",   label:"Fuel / Activity-Based (Qty × EF)"},
+  {id:"S1_CEMS",   label:"Direct Measurement (CEMS Stack Data)"},
+  {id:"S1_MASS",   label:"Mass Balance / Stoichiometric"}
+];
+
+const SCOPE2_METHODS = [
+  {id:"S2_DUAL",   label:"Dual Reporting (Location + Market-Based)"},
+  {id:"S2_LOC",    label:"Location-Based Only (Grid Average)"},
+  {id:"S2_MKT",    label:"Market-Based Only (RECs / PPAs / Supplier)"}
+];
+
+const SCOPE3_METHODS = [
+  {id:"S3_ACT",    label:"Activity-Based (Physical Units)"},
+  {id:"S3_SPEND",  label:"Spend-Based (EEIO Factor)"},
+  {id:"S3_SUPP",   label:"Supplier-Specific (Primary PCF)"},
+  {id:"S3_HYBRID", label:"Hybrid (Primary + Spend)"}
+];
+
+/* Complete GHG Protocol & ISO 14064-1 Category Catalog */
+const GHG_CATEGORIES = {
+  scope1: [
+    {id:"S1-1", code:"Cat 1.1", name:"Stationary Combustion (Boilers, Generators, Furnaces, Heaters)"},
+    {id:"S1-2", code:"Cat 1.2", name:"Mobile Combustion (Company-Owned Fleet, Trucks, Forklifts, Aircraft)"},
+    {id:"S1-3", code:"Cat 1.3", name:"Process Emissions (Chemical Reactions, Cement Clinker, Calcination, Smelting)"},
+    {id:"S1-4", code:"Cat 1.4", name:"Fugitive Emissions — Refrigerants & AC (HFCs, PFCs, Chillers, Cold Storage)"},
+    {id:"S1-5", code:"Cat 1.5", name:"Fugitive Emissions — Industrial & Gas Leaks (SF6 Switchgear, CH4 Pipelines, Mining)"},
+    {id:"S1-6", code:"Cat 1.6", name:"LULUCF, Biogenic & Direct Soil/Agri Emissions (Biomass Non-CO2, Fertilizer N2O)"},
+    {id:"S1-7", code:"Cat 1.7", name:"On-Site Waste Treatment & Incineration (On-Site ETP, Flare Stacks, Incinerators)"}
+  ],
+  scope2: [
+    {id:"S2-1", code:"Cat 2.1", name:"Purchased Electricity (Grid & Contractual)"},
+    {id:"S2-2", code:"Cat 2.2", name:"Purchased Steam, Heating & Cooling"}
+  ],
+  scope3: [
+    {id:"S3-1",  code:"Cat 1",  group:"Upstream",   name:"Purchased Goods and Services"},
+    {id:"S3-2",  code:"Cat 2",  group:"Upstream",   name:"Capital Goods"},
+    {id:"S3-3",  code:"Cat 3",  group:"Upstream",   name:"Fuel- and Energy-Related Activities"},
+    {id:"S3-4",  code:"Cat 4",  group:"Upstream",   name:"Upstream Transportation and Distribution"},
+    {id:"S3-5",  code:"Cat 5",  group:"Upstream",   name:"Waste Generated in Operations"},
+    {id:"S3-6",  code:"Cat 6",  group:"Upstream",   name:"Business Travel"},
+    {id:"S3-7",  code:"Cat 7",  group:"Upstream",   name:"Employee Commuting"},
+    {id:"S3-8",  code:"Cat 8",  group:"Upstream",   name:"Upstream Leased Assets"},
+    {id:"S3-9",  code:"Cat 9",  group:"Downstream", name:"Downstream Transportation and Distribution"},
+    {id:"S3-10", code:"Cat 10", group:"Downstream", name:"Processing of Sold Products"},
+    {id:"S3-11", code:"Cat 11", group:"Downstream", name:"Use of Sold Products"},
+    {id:"S3-12", code:"Cat 12", group:"Downstream", name:"End-of-Life Treatment of Sold Products"},
+    {id:"S3-13", code:"Cat 13", group:"Downstream", name:"Downstream Leased Assets"},
+    {id:"S3-14", code:"Cat 14", group:"Downstream", name:"Franchises"},
+    {id:"S3-15", code:"Cat 15", group:"Downstream", name:"Investments"}
+  ]
+};
+
+/* ---------- Unit Normalization & Matching Helper ---------- */
+function normUnit(u){
+  let s = String(u||"").trim().toLowerCase();
+  s = s.replace(/^kg\s*co2e\s*\/\s*/i, "");
+  const aliases = {
+    "l":"liters","liter":"liters","litres":"liters","litre":"liters","liters":"liters",
+    "m^3":"m3","cbm":"m3","cubic meter":"m3","cubic meters":"m3","m3":"m3",
+    "kilogram":"kg","kilograms":"kg","kgs":"kg","kg":"kg",
+    "t":"tonnes","ton":"tonnes","tons":"tonnes","tonne":"tonnes","mt":"tonnes","tonnes":"tonnes",
+    "kwh":"kwh","mwh":"mwh","gj":"gj",
+    "kilometer":"km","kilometers":"km","kms":"km","km":"km",
+    "tkm":"tonne-km","t-km":"tonne-km","tonne-km":"tonne-km","ton-km":"tonne-km",
+    "pkm":"passenger-km","pax-km":"passenger-km","passenger-km":"passenger-km",
+    "usd":"usd","$":"usd","inr":"inr","₹":"inr",
+    "unit":"units","units":"units",
+    "night":"room-nights","nights":"room-nights","room-night":"room-nights","room-nights":"room-nights",
+    "fte-day":"fte-days","fte-days":"fte-days",
+    "ha":"hectares","hectare":"hectares","hectares":"hectares"
+  };
+  return aliases[s] || s;
+}
+
+function resolveUnitMatch(actUnitRaw, efUnitRaw){
+  const a = normUnit(actUnitRaw);
+  const e = normUnit(efUnitRaw);
+  if(!a || !e) return { status:"mismatch", factor:1, label:"Missing unit" };
+  if(a === e) return { status:"exact", factor:1, label:`Exact Match (${actUnitRaw} = kgCO2e/${e})` };
+
+  const pairs = {
+    "kg->tonnes": 0.001,
+    "tonnes->kg": 1000,
+    "kwh->mwh": 0.001,
+    "mwh->kwh": 1000,
+    "mwh->gj": 3.6,
+    "gj->mwh": 1/3.6,
+    "kwh->gj": 0.0036,
+    "gj->kwh": 1000/3.6,
+    "liters->m3": 0.001,
+    "m3->liters": 1000
+  };
+  const key = `${a}->${e}`;
+  if(pairs[key] != null){
+    return { status:"converted", factor:pairs[key], label:`Auto-Converted (${actUnitRaw} × ${pairs[key]} -> ${e})` };
+  }
+  return { status:"mismatch", factor:1, label:`Unit Mismatch: Activity is "${actUnitRaw}" but EF is per "${e}"` };
+}
+
+/* Tula AI Suggested Default Emission Factors + Default Density & NCV for Site-Specific Calculations */
+const EF_PRESETS = {
+  "S1-1": { label:"Diesel / Natural Gas Default (Stationary)", unit:"Liters", ef:2.68, source:"Tula AI / IPCC 2006", defDensity:0.835, defNcv:43.0, defOxEf:0.0746 },
+  "S1-2": { label:"Fleet Diesel / Petrol Default (Mobile)", unit:"Liters", ef:2.68, source:"Tula AI / DEFRA 2025", defDensity:0.835, defNcv:43.0, defOxEf:0.0746 },
+  "S1-3": { label:"Industrial Process Default", unit:"tonnes", ef:525.0, source:"Tula AI / IPCC Industrial", defDensity:1.50, defNcv:10.0, defOxEf:0.0350 },
+  "S1-4": { label:"R-410A / R-134a Refrigerant Default", unit:"kg", ef:2088.0, source:"Tula AI / IPCC AR6 GWP", defDensity:1.10, defNcv:1.0, defOxEf:1.898 },
+  "S1-5": { label:"SF6 / CH4 Industrial Leak Default", unit:"kg", ef:28.0, source:"Tula AI / IPCC AR6", defDensity:0.717, defNcv:50.0, defOxEf:0.00078 },
+  "S1-6": { label:"Biomass / Soil N2O Default", unit:"tonnes", ef:14.8, source:"Tula AI / IPCC AFOLU", defDensity:0.45, defNcv:15.6, defOxEf:0.0021 },
+  "S1-7": { label:"On-Site Waste / ETP Default", unit:"m3", ef:0.85, source:"Tula AI / IPCC Waste", defDensity:1.00, defNcv:8.5, defOxEf:0.0001 },
+  "S2-1": { label:"Facility Grid Electricity Default", unit:"kWh", ef:0.716, source:"Tula AI / CEA National Grid", defDensity:1.0, defNcv:3.6, defOxEf:0.1989 },
+  "S2-2": { label:"Purchased District Steam / Cooling", unit:"GJ", ef:66.5, source:"Tula AI / DEFRA Thermal", defDensity:1.0, defNcv:1.0, defOxEf:0.0665 },
+  "S3-1": { label:"Purchased Goods & Materials (EEIO)", unit:"USD", ef:0.48, source:"Tula AI / US EPA EEIO", defDensity:1.0, defNcv:1.0, defOxEf:0.00048 },
+  "S3-4": { label:"Road & Ocean Freight Default", unit:"tonne-km", ef:0.105, source:"Tula AI / GLEC Framework", defDensity:1.0, defNcv:1.0, defOxEf:0.000105 },
+  "S3-5": { label:"Operational Waste Disposal Default", unit:"tonnes", ef:467.0, source:"Tula AI / DEFRA Waste", defDensity:0.60, defNcv:12.0, defOxEf:0.0648 },
+  "S3-6": { label:"Business Air & Rail Travel Default", unit:"passenger-km", ef:0.168, source:"Tula AI / ICAO & DEFRA", defDensity:1.0, defNcv:1.0, defOxEf:0.000168 },
+  "S3-7": { label:"Employee Commuting Default", unit:"km", ef:0.145, source:"Tula AI / Mobility Factor", defDensity:1.0, defNcv:1.0, defOxEf:0.000145 }
+};
+
+function getDefaultEfMeta(catId, fac){
+  if(catId === "S2-1" && fac && fac.grid){
+    const gEf = gridEf(fac.grid);
+    return { label:`Grid Electricity (${fac.grid})`, unit:"kWh", ef:gEf, source:`Tula AI / ${fac.grid}`, defDensity:1.0, defNcv:3.6, defOxEf:(gEf/3.6) };
+  }
+  return EF_PRESETS[catId] || { label:"Tula AI Category Benchmark", unit:"units", ef:0.85, source:"Tula AI Suggested Factor", defDensity:1.0, defNcv:10.0, defOxEf:0.000085 };
+}
+
+/**
+ * 3-Tier Emission Factor Calculation Engine:
+ * Tier 1 ("default"): Uses Tula AI Suggested Default EF
+ * Tier 2 ("site_calc"): Calculates Site-Specific EF from Density & NCV:
+ *   - If BOTH Density and NCV are entered -> uses both
+ *   - If ONLY Density is entered -> uses entered Density + Default NCV
+ *   - If ONLY NCV is entered -> uses Default Density + entered NCV
+ *   - If NEITHER Density nor NCV is entered -> falls back to Default Tula AI Suggested EF
+ * Tier 3 ("supplier"): Uses Direct Supplier-Specific EF entered by user
+ */
+function computeEffectiveEF(tier, catId, fac, opts){
+  const meta = getDefaultEfMeta(catId, fac);
+  const baseDefEf = meta.ef;
+  const defDens = meta.defDensity || 0.835;
+  const defNcv = meta.defNcv || 43.0;
+  // Energy-specific emission factor (kgCO2e / MJ) derived from default EF, density & NCV
+  const efPerMj = baseDefEf / (defDens * defNcv);
+
+  if(tier === "supplier"){
+    const supEf = Number(opts.supplierEf);
+    return {
+      ef: isNaN(supEf) || supEf < 0 ? 0 : supEf,
+      unit: opts.supplierEfUnit || meta.unit,
+      sourceTag: "Supplier-Specific Direct EF",
+      detail: `Direct Supplier PCF / Utility EF (${opts.supplierName || "Verified Supplier"})`
+    };
+  }
+
+  if(tier === "site_calc"){
+    const hasDens = opts.density !== "" && opts.density != null && !isNaN(Number(opts.density)) && Number(opts.density) > 0;
+    const hasNcv  = opts.ncv !== "" && opts.ncv != null && !isNaN(Number(opts.ncv)) && Number(opts.ncv) > 0;
+
+    if(!hasDens && !hasNcv){
+      return {
+        ef: baseDefEf,
+        unit: meta.unit,
+        sourceTag: "Fallback: Tula AI Default EF",
+        detail: `Neither Density nor NCV entered -> fell back to ${meta.source} (${baseDefEf} kgCO2e/${meta.unit})`
+      };
+    }
+
+    const usedDens = hasDens ? Number(opts.density) : defDens;
+    const usedNcv  = hasNcv  ? Number(opts.ncv)     : defNcv;
+    const calcEf   = usedDens * usedNcv * efPerMj;
+
+    const densNote = hasDens ? `Site Density: ${usedDens} kg/unit` : `Default Density: ${defDens} kg/unit`;
+    const ncvNote  = hasNcv  ? `Site NCV: ${usedNcv} MJ/kg`      : `Default NCV: ${defNcv} MJ/kg`;
+
+    return {
+      ef: Number(calcEf.toFixed(6)),
+      unit: meta.unit,
+      sourceTag: (hasDens && hasNcv) ? "Site-Specific (Density + NCV)" : "Hybrid Site EF (Partial Default)",
+      detail: `${densNote} & ${ncvNote} -> ${calcEf.toFixed(4)} kgCO2e/${meta.unit}`
+    };
+  }
+
+  // Default / Tula AI Suggested
+  return {
+    ef: baseDefEf,
+    unit: meta.unit,
+    sourceTag: "Default / Tula AI Suggested",
+    detail: `${meta.source} (${baseDefEf} kgCO2e/${meta.unit})`
+  };
+}
+
+const KEY = "tula_carbon_rbac_v10";
+const SELF_ADMIN_ID = "u_tenant_admin";
+
+/* ---------- Default Multi-Tenant State ---------- */
+function freshState(){
+  return {
+    mode: "login",
+    activeTenantId: "org_alpha",
+    tenantSubTab: "facilities",
+    activeFacilityId: "FAC-IN-0001",
+    activeOpUserId: "u_ananya",
+    activeCatKey: "S1:S1-1",
+    modalScopeTab: "ALL",
+    tenants: [
+      {
+        id: "org_alpha",
+        name: "Alpha Holdings Pvt Ltd",
+        industry: "Industrial Manufacturing & Agri-Processing",
+        effectiveFrom: "2025-04-01",
+        effectiveTo: "2026-03-31",
+        framework: "GHG Protocol Corporate Standard",
+        approach: "Operational Control",
+        status: "ACTIVE",
+        tenantAdmin: { name: "Priya Nair", email: "priya.nair@alphaholdings.in" },
+        permissions: {
+          canAddFacilities: true,
+          canManageUsers: true,
+          canConfigureScopes: true
+        },
+        lock: null,
+        version: 1,
+        users: [
+          { id: "u_ananya", name: "Ananya Sharma", email: "ananya.s@alphaholdings.in", role: "Data Entry Operator", dept: "Plant Utilities & EHS" },
+          { id: "u_vikram", name: "Vikram Patel",  email: "vikram.p@alphaholdings.in", role: "Data Entry Operator", dept: "Logistics & Procurement" }
+        ],
+        facilities: [
+          {
+            id:"FAC-IN-0001", name:"Hyderabad Plant 1", country:"India", grid:"India - Southern Grid",
+            equity:100, op:"Yes", fin:"Yes",
+            s1:true, s2:true, s3:true,
+            s1Cats:["S1-1","S1-2","S1-3","S1-4","S1-7"],
+            s2Cats:["S2-1","S2-2"],
+            s3Cats:["S3-1","S3-4","S3-5","S3-6"],
+            s2Method:"S2_DUAL",
+            catMethods:{
+              "S1-1":"S1_FUEL", "S1-2":"S1_FUEL", "S1-3":"S1_MASS", "S1-4":"S1_MASS", "S1-7":"S1_FUEL",
+              "S3-1":"S3_SPEND", "S3-4":"S3_ACT", "S3-5":"S3_ACT", "S3-6":"S3_SPEND"
+            },
+            assignedUsers:["u_ananya","u_vikram",SELF_ADMIN_ID],
+            catOperators:{
+              "S1-1":"u_ananya", "S1-2":"u_ananya", "S1-3":SELF_ADMIN_ID, "S1-4":"u_ananya", "S1-7":SELF_ADMIN_ID,
+              "S2-1":"u_ananya", "S2-2":SELF_ADMIN_ID,
+              "S3-1":"u_vikram", "S3-4":"u_vikram", "S3-5":"u_ananya", "S3-6":"u_vikram"
+            }
+          },
+          {
+            id:"FAC-IN-0002", name:"Pune Warehouse & Logistics Hub", country:"India", grid:"India - Western Grid",
+            equity:100, op:"Yes", fin:"Yes",
+            s1:true, s2:true, s3:true,
+            s1Cats:["S1-2","S1-4"],
+            s2Cats:["S2-1"],
+            s3Cats:["S3-4","S3-5","S3-7"],
+            s2Method:"S2_LOC",
+            catMethods:{
+              "S1-2":"S1_FUEL", "S1-4":"S1_MASS",
+              "S3-4":"S3_ACT", "S3-5":"S3_ACT", "S3-7":"S3_ACT"
+            },
+            assignedUsers:["u_vikram",SELF_ADMIN_ID],
+            catOperators:{
+              "S1-2":"u_vikram", "S1-4":"u_vikram",
+              "S2-1":SELF_ADMIN_ID,
+              "S3-4":"u_vikram", "S3-5":"u_vikram", "S3-7":SELF_ADMIN_ID
+            }
+          }
+        ],
+        entries: [
+          {id:"E-101", facilityId:"FAC-IN-0001", scope:"S1", catId:"S1-1", method:"S1_FUEL", source:"Backup DG Set #1 Diesel", period:"2025-04 (Apr 2025)", qty:12500, unit:"Liters", efUnit:"Liters", unitMatch:"Exact Match", ef:2.68, efTier:"default", efSource:"Default / Tula AI Suggested", mktEf:null, tco2e:33.50, mktTco2e:null, enteredBy:"Ananya Sharma", notes:"Monthly fuel log #DG-04", evidenceFile:{name:"DG_Fuel_Log_Apr2025.csv",type:"text/csv",size:1024,dataUrl:""}},
+          {id:"E-102", facilityId:"FAC-IN-0001", scope:"S1", catId:"S1-3", method:"S1_MASS", source:"Kiln Calcination Batch #4", period:"2025-04 (Apr 2025)", qty:42, unit:"tonnes", efUnit:"tonnes", unitMatch:"Exact Match", ef:549.42, efTier:"site_calc", efSource:"Site-Specific (Density + NCV)", mktEf:null, tco2e:23.08, mktTco2e:null, enteredBy:"Priya Nair (Tenant Admin)", notes:"Lab NCV & bulk density cert", evidenceFile:{name:"Lab_NCV_Density_Cert_Q1.txt",type:"text/plain",size:840,dataUrl:""}},
+          {id:"E-103", facilityId:"FAC-IN-0001", scope:"S2", catId:"S2-1", method:"S2_DUAL", source:"Main Grid + 40% Solar PPA", period:"2025-04 (Apr 2025)", qty:180000, unit:"kWh", efUnit:"kWh", unitMatch:"Exact Match", ef:0.688, efTier:"supplier", efSource:"Supplier-Specific Direct EF", mktEf:0.4128, tco2e:123.84, mktTco2e:74.30, enteredBy:"Ananya Sharma", notes:"TSSPDCL & Open Access Solar PPA Bill", evidenceFile:{name:"TSSPDCL_Solar_PPA_Bill_Apr2025.txt",type:"text/plain",size:912,dataUrl:""}},
+          {id:"E-104", facilityId:"FAC-IN-0001", scope:"S3", catId:"S3-1", method:"S3_SPEND", source:"Specialty Packaging & Resins Spend", period:"2025-04 (Apr 2025)", qty:85000, unit:"USD", efUnit:"USD", unitMatch:"Exact Match", ef:0.48, efTier:"default", efSource:"Default / Tula AI Suggested", mktEf:null, tco2e:40.80, mktTco2e:null, enteredBy:"Vikram Patel", notes:"Procurement ERP export", evidenceFile:null}
+        ]
+      },
+      {
+        id: "org_beta",
+        name: "Beta Agro Ltd",
+        industry: "Agri-Commodities & Cold Chain",
+        effectiveFrom: "2025-01-01",
+        effectiveTo: "2026-12-31",
+        framework: "BRSR Core (SEBI India)",
+        approach: "Equity Share",
+        status: "ACTIVE",
+        tenantAdmin: { name: "Rajesh Verma", email: "rajesh.v@betaagro.com" },
+        permissions: {
+          canAddFacilities: true,
+          canManageUsers: true,
+          canConfigureScopes: true
+        },
+        lock: null,
+        version: 1,
+        users: [
+          { id: "u_sanjay", name: "Sanjay Kulkarni", email: "sanjay.k@betaagro.com", role: "Data Entry Operator", dept: "Cold Storage & Agri Ops" }
+        ],
+        facilities: [
+          {
+            id:"BETA-KA-01", name:"Bengaluru Cold Chain Facility", country:"India", grid:"India - Southern Grid",
+            equity:80, op:"Yes", fin:"Yes",
+            s1:true, s2:true, s3:true,
+            s1Cats:["S1-1","S1-4","S1-6"], s2Cats:["S2-1"], s3Cats:["S3-1","S3-4"],
+            s2Method:"S2_DUAL",
+            catMethods:{"S1-1":"S1_FUEL","S1-4":"S1_MASS","S1-6":"S1_MASS","S3-1":"S3_ACT","S3-4":"S3_ACT"},
+            assignedUsers:["u_sanjay",SELF_ADMIN_ID],
+            catOperators:{"S1-1":"u_sanjay","S1-4":"u_sanjay","S1-6":SELF_ADMIN_ID,"S2-1":"u_sanjay","S3-1":"u_sanjay","S3-4":SELF_ADMIN_ID}
+          }
+        ],
+        entries: [
+          {id:"E-201", facilityId:"BETA-KA-01", scope:"S2", catId:"S2-1", method:"S2_DUAL", source:"Cold Storage Grid Supply", period:"2025-04 (Apr 2025)", qty:95000, unit:"kWh", efUnit:"kWh", unitMatch:"Exact Match", ef:0.688, efTier:"default", efSource:"Default / Tula AI Suggested", mktEf:0.688, tco2e:65.36, mktTco2e:65.36, enteredBy:"Sanjay Kulkarni", notes:"BESCOM bill", evidenceFile:null}
+        ]
+      }
+    ]
+  };
+}
+
+let S = load() || freshState();
+function load(){
+  try{
+    const v = localStorage.getItem(KEY);
+    if(!v) return null;
+    const parsed = JSON.parse(v);
+    if(!parsed.tenants || !parsed.tenants.length) return null;
+    return parsed;
+  }catch(e){ return null; }
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+/* ---------- Helpers ---------- */
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+const esc = v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const BAD_START = /^[=+\-@]/;
+const ID_RE = /^[A-Z0-9][A-Z0-9-]{2,19}$/;
+function normId(v){ return String(v||"").trim().toUpperCase().replace(/[\u2013\u2014]/g,"-"); }
+function pctText(x){ return x==null?"": (Math.round(x*10000)/100)+"%"; }
+function fmtNum(n){ return Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function toast(msg){
+  const t=$("#toast"); t.textContent=msg; t.hidden=false;
+  clearTimeout(toast.h); toast.h=setTimeout(()=>{t.hidden=true},3800);
+}
+function gridEf(gridName){
+  const g = GRIDS.find(x=>x.name===gridName);
+  return g ? g.ef : 0.716;
+}
+function pie(p){
+  const r=7, c=2*Math.PI*r, d=(Math.max(0,Math.min(100,p))/100)*c;
+  return `<svg width="40" height="40" viewBox="0 0 44 44" aria-hidden="true">
+    <circle cx="22" cy="22" r="19" fill="#fff" stroke="#8FA3AA" stroke-width="2"/>
+    <circle cx="22" cy="22" r="${r*1.35}" fill="none" stroke="#0E6B6E" stroke-width="${r*2.7}"
+      stroke-dasharray="${(d*1.35).toFixed(2)} ${(c*1.35).toFixed(2)}" transform="rotate(-90 22 22)"/>
+  </svg>`;
+}
+function methodLabel(code){
+  const all = [...SCOPE1_METHODS, ...SCOPE2_METHODS, ...SCOPE3_METHODS];
+  const m = all.find(x=>x.id===code);
+  return m ? m.label : code;
+}
+function methodShort(code){
+  const map = {
+    S1_FUEL:"Fuel / Activity", S1_CEMS:"Direct CEMS", S1_MASS:"Mass Balance",
+    S2_DUAL:"Dual (Loc + Mkt)", S2_LOC:"Location-Based", S2_MKT:"Market-Based",
+    S3_ACT:"Activity-Based", S3_SPEND:"Spend-Based (EEIO)", S3_SUPP:"Supplier-Specific", S3_HYBRID:"Hybrid"
+  };
+  return map[code] || code || "Default";
+}
+
+function activeTenant(){
+  let t = S.tenants.find(x=>x.id===S.activeTenantId);
+  if(!t){ t = S.tenants[0]; S.activeTenantId = t.id; }
+  return t;
+}
+
+/* Returns combined list of assignable actors: Tenant Admin (Self) + Data Entry Operators */
+function getAllAssignableActors(t){
+  return [
+    { id: SELF_ADMIN_ID, name: `${t.tenantAdmin.name} (Tenant Admin — Self)`, dept: "Tenant Admin", email: t.tenantAdmin.email, isSelf: true },
+    ...t.users.map(u => ({ id: u.id, name: u.name, dept: u.dept, email: u.email, isSelf: false }))
+  ];
+}
+
+function actorNameById(t, uid){
+  if(!uid) return "Unassigned";
+  if(uid === SELF_ADMIN_ID) return `${t.tenantAdmin.name} (Admin)`;
+  const u = t.users.find(x=>x.id===uid);
+  return u ? u.name : "Unassigned";
+}
+
+function getActiveCategoryIds(f){
+  const list = [];
+  if(f.s1) (f.s1Cats||[]).forEach(id=>list.push({scope:"S1", id}));
+  if(f.s2) (f.s2Cats||[]).forEach(id=>list.push({scope:"S2", id}));
+  if(f.s3) (f.s3Cats||[]).forEach(id=>list.push({scope:"S3", id}));
+  return list;
+}
+
+function getFacilityAssignedCatsForActor(f, actorId){
+  const catOps = f.catOperators || {};
+  return getActiveCategoryIds(f).filter(item => catOps[item.id] === actorId);
+}
+
+/* Evidence File Download / Preview Helper */
+function openEvidenceFile(t, entryId){
+  const e = t.entries.find(x=>x.id===entryId);
+  if(!e || !e.evidenceFile){ toast("No evidence file attached to this record."); return; }
+  const ev = e.evidenceFile;
+  if(ev.dataUrl){
+    const a = document.createElement("a");
+    a.href = ev.dataUrl;
+    a.download = ev.name || "evidence_document";
+    a.click();
+    toast("Downloading attached evidence: " + ev.name);
+  } else {
+    const content = `TULA CARBON — AUDIT EVIDENCE RECORD\n====================================\nOrganization: ${t.name}\nFacility ID: ${e.facilityId}\nScope / Category: ${e.scope} (${e.catId})\nActivity Name: ${e.source}\nPeriod Month: ${e.period}\nActivity Data: ${e.qty} ${e.unit}\nEmission Factor: ${e.ef} kgCO2e/${e.efUnit||e.unit} [${e.efSource||"Default"}]\nUnit Match: ${e.unitMatch||"Exact Match"}\nCalculated Emissions: ${fmtNum(e.tco2e)} tCO2e\nEvidence Reference: ${e.notes||"N/A"}\nAttached Filename: ${ev.name}\nLogged By: ${e.enteredBy}\n`;
+    const blob = new Blob([content], {type:"text/plain;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = ev.name || "Audit_Evidence.txt";
+    a.click();
+    toast("Downloaded evidence certificate: " + ev.name);
+  }
+}
+
+/* ---------- Tenant Validation & Consolidation Logic ---------- */
+function approachField(t){ return t.approach ? APPROACHES[t.approach].field : ""; }
+function missingField(t, f){
+  if(t.approach==="Equity Share") return f.equity===""||f.equity==null;
+  if(t.approach==="Operational Control") return !f.op;
+  if(t.approach==="Financial Control") return !f.fin;
+  return false;
+}
+function inclusion(t, f){
+  if(!t.approach) return null;
+  if(t.approach==="Equity Share"){ if(f.equity===""||f.equity==null||isNaN(Number(f.equity))) return null; return Number(f.equity)/100; }
+  const v = t.approach==="Operational Control"?f.op:f.fin;
+  if(!v) return null; return v==="Yes"?1:0;
+}
+function statusOf(t, f){
+  const id=normId(f.id);
+  if(!id) return "Missing Facility ID";
+  if(!ID_RE.test(id)) return "Invalid Facility ID";
+  if(t.facilities.filter(x=>normId(x.id)===id).length>1) return "Duplicate Facility ID";
+  const nm=String(f.name||"").trim();
+  if(!nm||!f.country) return "Missing required field";
+  if(nm.length>120) return "Name too long";
+  if(BAD_START.test(nm)) return "Invalid name prefix";
+  if(!f.s1&&!f.s2&&!f.s3) return "Select >= 1 scope";
+  if(f.s2&&!f.grid) return "Missing Grid Location";
+  if(t.approach==="Equity Share"){
+    if(missingField(t, f)) return "Missing Equity Share %";
+    const q=Number(f.equity); if(isNaN(q)||q<0||q>100) return "Equity 0-100%";
+  } else if(missingField(t, f)) return "Missing "+approachField(t);
+  return "OK";
+}
+function tenantStats(t){
+  const a=t.facilities, st=a.map(f=>statusOf(t,f)), inc=a.map(f=>inclusion(t,f));
+  return {
+    n:a.length, issues:st.filter(x=>x!=="OK").length,
+    s1:a.filter(f=>f.s1).length, s2:a.filter(f=>f.s2).length, s3:a.filter(f=>f.s3).length,
+    full:inc.filter(x=>x===1).length, part:inc.filter(x=>x!=null&&x>0&&x<1).length, out:inc.filter(x=>x===0).length
+  };
+}
+
+/* ---------- Shell Navigation ---------- */
+function setMode(mode){
+  S.mode = mode;
+  save();
+  render();
+  $("#view").focus({preventScroll:true});
+  window.scrollTo({top:0});
+}
+
+function renderShell(){
+  const t = activeTenant();
+  $$("#roleSwitcher .role-tab").forEach(btn=>{
+    btn.classList.toggle("active", btn.dataset.mode===S.mode);
+    btn.onclick = ()=>setMode(btn.dataset.mode);
+  });
+
+  const subMap = {
+    login: "Role & Access Gateway",
+    super: "Super Admin Console",
+    tenant: "Tenant Admin Workspace",
+    operator: "Data Entry Operator Portal"
+  };
+  $("#roleSub").textContent = subMap[S.mode] || "";
+
+  const parts = [];
+  if(S.mode === "super"){
+    parts.push(`<span class="badge super">Role: Super Admin</span>`);
+    parts.push(`<span class="badge">${S.tenants.length} Tenant Orgs</span>`);
+  } else if(S.mode === "tenant"){
+    parts.push(`<span class="badge tenant">Tenant Admin: ${esc(t.tenantAdmin.name)}</span>`);
+    parts.push(`<span class="badge on">${esc(t.name)}</span>`);
+    parts.push(`<span class="badge">Access: ${esc(t.effectiveFrom)} to ${esc(t.effectiveTo||"Open")}</span>`);
+    if(t.lock) parts.push(`<span class="badge lock">Locked v${t.lock.version}</span>`);
+  } else if(S.mode === "operator"){
+    const opUser = t.users.find(u=>u.id===S.activeOpUserId) || t.users[0];
+    parts.push(`<span class="badge operator">Operator: ${esc(opUser?opUser.name:"Unassigned")}</span>`);
+    parts.push(`<span class="badge on">${esc(t.name)}</span>`);
+  } else {
+    parts.push(`<span class="badge">Platform v3.3</span>`);
+  }
+  parts.push(`<button class="link" id="reset" type="button">Reset demo data</button>`);
+  $("#badges").innerHTML = parts.join("");
+  $("#reset").onclick = ()=>{
+    if(confirm("Reset all demo organizations, facilities, category assignments, and activity records?")){
+      S = freshState();
+      save();
+      render();
+      toast("Demo data restored to default.");
+    }
+  };
+}
+
+function render(){
+  renderShell();
+  const v = $("#view");
+  if(S.mode === "login") viewLoginGateway(v);
+  else if(S.mode === "super") viewSuperAdmin(v);
+  else if(S.mode === "tenant") viewTenantAdmin(v);
+  else viewDataEntry(v);
+}
+
+/* ==========================================================================
+   VIEW 0: LOGIN & ROLE GATEWAY
+   ========================================================================== */
+function viewLoginGateway(v){
+  const t = activeTenant();
+  v.innerHTML = `<section class="panel">
+    <h1>Tula Carbon — Access &amp; Role Gateway</h1>
+    <p class="lead">Select a role session below: <b>Super Admin</b> provisions tenant organizations, sets their platform access validity window (<b>Effective From &ndash; Effective To</b>), and grants Tenant Admin access; <b>Tenant Admin</b> sets their organizational boundary, adds facilities &amp; GHG categories, assigns operators or <b>assigns themselves</b>, and logs facility activity data.</p>
+
+    <div class="login-grid">
+      <div class="login-card super-card">
+        <span class="role-pill super">Platform Level</span>
+        <h3>1. Super Admin Login</h3>
+        <p class="hint" style="font-size:13.5px">Provision tenant organizations, configure their access validity period (Effective From &ndash; Effective To), assign Tenant Admins, and grant portal access permissions.</p>
+        <div style="background:var(--paper);padding:10px 12px;border-radius:6px;font-size:13px">
+          <b>Account:</b> Platform Super Admin<br>
+          <b>Provisioned Tenants:</b> ${S.tenants.map(x=>esc(x.name)).join(", ")}
+        </div>
+        <div style="margin-top:auto">
+          <button type="button" class="btn amber" id="loginSuper" style="width:100%">Sign in as Super Admin &rarr;</button>
+        </div>
+      </div>
+
+      <div class="login-card tenant-card">
+        <span class="role-pill tenant">Organization Level</span>
+        <h3>2. Tenant Admin Login</h3>
+        <p class="hint" style="font-size:13.5px">Set Organizational Consolidation Boundary, add facilities, tick Scope 1, 2 &amp; 3 GHG Protocol categories, assign Data Entry Operators or <b>assign yourself</b>, and fill facility activity data.</p>
+        <div>
+          <label class="f" for="gwTenantSel">Select Tenant Organization</label>
+          <select id="gwTenantSel">
+            ${S.tenants.map(org=>`<option value="${org.id}" ${org.id===t.id?"selected":""}>${esc(org.name)} — Admin: ${esc(org.tenantAdmin.name)}</option>`).join("")}
+          </select>
+        </div>
+        <div style="background:var(--teal-soft);padding:10px 12px;border-radius:6px;font-size:12.5px;color:var(--teal-d)">
+          <b>Access Window:</b> ${esc(t.effectiveFrom)} to ${esc(t.effectiveTo||"Open")} &bull; <b>Boundary:</b> ${esc(t.approach)}
+        </div>
+        <div style="margin-top:auto">
+          <button type="button" class="btn" id="loginTenant" style="width:100%">Sign in as ${esc(t.tenantAdmin.name)} (Tenant Admin) &rarr;</button>
+        </div>
+      </div>
+
+      <div class="login-card op-card">
+        <span class="role-pill op">Assigned Work Queue</span>
+        <h3>3. Data Entry Operator Login</h3>
+        <p class="hint" style="font-size:13.5px">Sign in as a Data Entry Operator to log activity data using Default / Tula AI factors, Site-Specific calculations (Density &amp; NCV), or Supplier-Specific factors.</p>
+        <div>
+          <label class="f" for="gwOpSel">Select Operator (${esc(t.name)})</label>
+          <select id="gwOpSel">
+            ${t.users.length ? t.users.map(u=>`<option value="${u.id}" ${u.id===S.activeOpUserId?"selected":""}>${esc(u.name)} (${esc(u.dept)})</option>`).join("") : `<option value="">No operators created yet</option>`}
+          </select>
+        </div>
+        <div style="margin-top:auto">
+          <button type="button" class="btn purple" id="loginOp" style="width:100%" ${t.users.length?"":"disabled"}>Sign in as Data Entry Operator &rarr;</button>
+        </div>
+      </div>
+    </div>
+  </section>`;
+
+  $("#loginSuper").onclick = ()=>setMode("super");
+  $("#gwTenantSel").onchange = e=>{ S.activeTenantId = e.target.value; save(); render(); };
+  $("#loginTenant").onclick = ()=>{ S.tenantSubTab = "facilities"; setMode("tenant"); };
+  $("#gwOpSel").onchange = e=>{ S.activeOpUserId = e.target.value; save(); };
+  $("#loginOp").onclick = ()=>{
+    if($("#gwOpSel").value) S.activeOpUserId = $("#gwOpSel").value;
+    setMode("operator");
+  };
+}
+
+/* ==========================================================================
+   VIEW 1: SUPER ADMIN CONSOLE (EFFECTIVE FROM - TO ACCESS WINDOW, NO REPORTING YEAR)
+   ========================================================================== */
+function viewSuperAdmin(v){
+  const t = activeTenant();
+  v.innerHTML = `<section class="panel">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div>
+        <h1>Super Admin — Tenant Provisioning &amp; Access Validity</h1>
+        <p class="lead">Provision tenant organizations, set their subscription / platform access period (<b>Effective From</b> &ndash; <b>Effective To</b>), and grant access to each organization's <b>Tenant Admin</b>.</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="btn sec sm" id="newTenantBtn">+ Provision New Tenant</button>
+        <button type="button" class="btn sm" id="impersonateTenantBtn">Open Tenant Admin Portal (${esc(t.tenantAdmin.name)}) &rarr;</button>
+      </div>
+    </div>
+
+    <h2>Provisioned Tenant Organizations</h2>
+    <div class="tablewrap" style="margin-bottom:24px">
+      <table>
+        <thead>
+          <tr>
+            <th>Organization</th>
+            <th>Tenant Access Validity (From &ndash; To)</th>
+            <th>Tenant Admin</th>
+            <th>Granted Access Permissions</th>
+            <th>Facilities / Users</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${S.tenants.map(org=>`<tr style="${org.id===t.id?"background:#F5FBFB":""}">
+            <td><b>${esc(org.name)}</b><br><span class="hint">${esc(org.industry)}</span></td>
+            <td><span class="tag s1">${esc(org.effectiveFrom)} &rarr; ${esc(org.effectiveTo||"Open")}</span></td>
+            <td><b>${esc(org.tenantAdmin.name)}</b><br><span class="hint">${esc(org.tenantAdmin.email)}</span></td>
+            <td>
+              <span class="tag perm ${org.permissions.canAddFacilities?"":"off"}">Manage Facilities</span>
+              <span class="tag perm ${org.permissions.canConfigureScopes?"":"off"}">Scopes &amp; Categories</span>
+              <span class="tag perm ${org.permissions.canManageUsers?"":"off"}">Assign Operators</span>
+            </td>
+            <td><b>${org.facilities.length}</b> facilities &bull; <b>${org.users.length}</b> operators</td>
+            <td style="white-space:nowrap">
+              <button type="button" class="btn sec sm" data-select-org="${org.id}">${org.id===t.id?"Editing":"Configure"}</button>
+              <button type="button" class="btn sm" data-login-org="${org.id}">Login as Admin &rarr;</button>
+            </td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Configure Selected Tenant: <span style="color:var(--teal)">${esc(t.name)}</span></h2>
+    <div class="grid2" style="margin-bottom:18px">
+      <div>
+        <label class="f" for="saOrgName">Organization Legal Name</label>
+        <input type="text" id="saOrgName" value="${esc(t.name)}" maxlength="120">
+      </div>
+      <div>
+        <label class="f" for="saIndustry">Industry Sector</label>
+        <input type="text" id="saIndustry" value="${esc(t.industry)}">
+      </div>
+      <div>
+        <label class="f" for="saEffFrom">Effective From (Access Start Date)</label>
+        <input type="date" id="saEffFrom" value="${esc(t.effectiveFrom)}">
+        <span class="hint">Date when tenant access begins</span>
+      </div>
+      <div>
+        <label class="f" for="saEffTo">Effective To (Access End Date)</label>
+        <input type="date" id="saEffTo" value="${esc(t.effectiveTo||"")}">
+        <span class="hint">Date when tenant access expires</span>
+      </div>
+      <div>
+        <label class="f" for="saFramework">Reporting Framework</label>
+        <select id="saFramework">
+          ${FRAMEWORKS.map(fw=>`<option ${fw===t.framework?"selected":""}>${esc(fw)}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    <h2>Tenant Admin Account &amp; Access Permissions</h2>
+    <div class="grid2" style="margin-bottom:16px">
+      <div>
+        <label class="f" for="saAdminName">Tenant Admin Full Name</label>
+        <input type="text" id="saAdminName" value="${esc(t.tenantAdmin.name)}">
+      </div>
+      <div>
+        <label class="f" for="saAdminEmail">Tenant Admin Email (Login ID)</label>
+        <input type="email" id="saAdminEmail" value="${esc(t.tenantAdmin.email)}">
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px">
+      <label class="chk">
+        <input type="checkbox" id="permFac" ${t.permissions.canAddFacilities?"checked":""}>
+        <span>Grant Access: Add &amp; Manage Facilities</span>
+      </label>
+      <label class="chk">
+        <input type="checkbox" id="permScope" ${t.permissions.canConfigureScopes?"checked":""}>
+        <span>Grant Access: Select Applicable Scope 1, 2 &amp; 3 Categories</span>
+      </label>
+      <label class="chk">
+        <input type="checkbox" id="permUsers" ${t.permissions.canManageUsers?"checked":""}>
+        <span>Grant Access: Manage Operators &amp; Category Assignments</span>
+      </label>
+    </div>
+
+    <div class="row-actions">
+      <button type="button" class="btn sec" id="saBackLogin">&larr; Back to Login Gateway</button>
+      <span class="sp"></span>
+      <button type="button" class="btn" id="saLaunchTenant">Save &amp; Launch Tenant Admin Portal (${esc(t.tenantAdmin.name)}) &rarr;</button>
+    </div>
+  </section>`;
+
+  $$("[data-select-org]", v).forEach(b=>b.onclick=()=>{ S.activeTenantId = b.dataset.selectOrg; save(); render(); });
+  $$("[data-login-org]", v).forEach(b=>b.onclick=()=>{
+    S.activeTenantId = b.dataset.loginOrg;
+    S.tenantSubTab = "facilities";
+    setMode("tenant");
+  });
+
+  $("#newTenantBtn").onclick = ()=>{
+    const id = "org_" + Date.now();
+    S.tenants.push({
+      id,
+      name: "New Enterprise Tenant Ltd",
+      industry: "Manufacturing & Services",
+      effectiveFrom: "2026-04-01",
+      effectiveTo: "2027-03-31",
+      framework: "GHG Protocol Corporate Standard",
+      approach: "Operational Control",
+      status: "ACTIVE",
+      tenantAdmin: { name: "Arjun Mehta", email: "arjun.m@newtenant.com" },
+      permissions: { canAddFacilities: true, canManageUsers: true, canConfigureScopes: true },
+      lock: null,
+      version: 1,
+      users: [
+        { id: "u_"+Date.now(), name: "Kiran Rao", email: "kiran.r@newtenant.com", role: "Data Entry Operator", dept: "Sustainability & Ops" }
+      ],
+      facilities: [],
+      entries: []
+    });
+    S.activeTenantId = id;
+    save();
+    render();
+    toast("New tenant provisioned. Set Effective From/To dates and Tenant Admin access.");
+  };
+
+  $("#saOrgName").oninput = e=>{ t.name = e.target.value; save(); renderShell(); };
+  $("#saIndustry").oninput = e=>{ t.industry = e.target.value; save(); };
+  $("#saEffFrom").oninput = e=>{ t.effectiveFrom = e.target.value; save(); };
+  $("#saEffTo").oninput = e=>{ t.effectiveTo = e.target.value; save(); };
+  $("#saFramework").onchange = e=>{ t.framework = e.target.value; save(); };
+  $("#saAdminName").oninput = e=>{ t.tenantAdmin.name = e.target.value; save(); renderShell(); };
+  $("#saAdminEmail").oninput = e=>{ t.tenantAdmin.email = e.target.value; save(); };
+  $("#permFac").onchange = e=>{ t.permissions.canAddFacilities = e.target.checked; save(); render(); };
+  $("#permScope").onchange = e=>{ t.permissions.canConfigureScopes = e.target.checked; save(); render(); };
+  $("#permUsers").onchange = e=>{ t.permissions.canManageUsers = e.target.checked; save(); render(); };
+
+  $("#saBackLogin").onclick = ()=>setMode("login");
+  $("#impersonateTenantBtn").onclick = ()=>{ S.tenantSubTab = "facilities"; setMode("tenant"); };
+  $("#saLaunchTenant").onclick = ()=>{ S.tenantSubTab = "facilities"; setMode("tenant"); toast("Signed in as Tenant Admin: " + t.tenantAdmin.name); };
+}
+
+/* ==========================================================================
+   VIEW 2: TENANT ADMIN PORTAL (BOUNDARY + FACILITIES + SELF-ASSIGNMENT + DATA ENTRY)
+   ========================================================================== */
+function viewTenantAdmin(v){
+  const t = activeTenant();
+  const k = tenantStats(t);
+  const locked = !!t.lock;
+
+  v.innerHTML = `<section class="panel">
+    ${locked ? `<div class="lockbar" role="status">
+      <span>Boundary v${t.lock.version} is approved and locked (${esc(new Date(t.lock.at).toLocaleString())}).</span>
+      <button class="btn sec sm" type="button" id="taNewVer">Create new version</button>
+    </div>` : ""}
+
+    <div class="infobar">
+      <div>
+        <b>Signed in as Tenant Admin:</b> ${esc(t.tenantAdmin.name)} (${esc(t.tenantAdmin.email)}) &bull;
+        <b>Organization:</b> ${esc(t.name)} &bull;
+        <b>Access Valid:</b> ${esc(t.effectiveFrom)} to ${esc(t.effectiveTo||"Open")}
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <select id="taSwitchOrg" aria-label="Switch Tenant Organization" style="min-height:32px;padding:3px 8px;font-size:13px;width:auto">
+          ${S.tenants.map(org=>`<option value="${org.id}" ${org.id===t.id?"selected":""}>${esc(org.name)}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    <div class="subnav">
+      <button type="button" class="subtab ${S.tenantSubTab==="facilities"?"active":""}" data-tab="facilities">1. Boundary &amp; Facilities (${t.facilities.length})</button>
+      <button type="button" class="subtab ${S.tenantSubTab==="users"?"active":""}" data-tab="users">2. Operators &amp; Category Assignments (${t.users.length + 1})</button>
+      <button type="button" class="subtab ${S.tenantSubTab==="data_entry"?"active":""}" data-tab="data_entry">3. Fill Facility Activity Data (${t.entries.length})</button>
+      <button type="button" class="subtab ${S.tenantSubTab==="review"?"active":""}" data-tab="review">4. Consolidated GHG Summary &amp; Lock</button>
+    </div>
+
+    <div id="taBody"></div>
+  </section>`;
+
+  $("#taSwitchOrg").onchange = e=>{ S.activeTenantId = e.target.value; save(); render(); };
+  $$(".subtab", v).forEach(btn=>btn.onclick=()=>{ S.tenantSubTab = btn.dataset.tab; save(); render(); });
+  if($("#taNewVer")){
+    $("#taNewVer").onclick = ()=>{
+      const why = prompt("Reason for unlocking a new boundary version:");
+      if(!why || !why.trim()) return;
+      t.version = t.lock.version + 1;
+      t.lock = null;
+      save();
+      render();
+      toast("Boundary unlocked as Version " + t.version);
+    };
+  }
+
+  const body = $("#taBody");
+  if(S.tenantSubTab === "facilities") renderTenantFacilitiesTab(body, t, k, locked);
+  else if(S.tenantSubTab === "users") renderTenantUsersTab(body, t, locked);
+  else if(S.tenantSubTab === "data_entry") renderTenantDataEntryTab(body, t, locked);
+  else renderTenantReviewTab(body, t, k, locked);
+}
+
+function renderTenantFacilitiesTab(box, t, k, locked){
+  const canFac = t.permissions.canAddFacilities && !locked;
+  const fld = approachField(t);
+
+  box.innerHTML = `
+    <h2 style="margin-top:0">1. Organizational Consolidation Boundary (${esc(t.name)})</h2>
+    <p class="hint" style="font-size:13.5px;margin-bottom:14px">Select the GHG Protocol organizational consolidation boundary for <b>${esc(t.name)}</b>. This governs how facility emissions are rolled up across your organization.</p>
+
+    <div class="cards" style="margin-bottom:24px">
+      ${Object.keys(APPROACHES).map(key=>{
+        const a = APPROACHES[key];
+        return `<label class="card">
+          <input type="radio" name="taAppr" value="${esc(key)}" ${t.approach===key?"checked":""} ${locked?"disabled":""}>
+          <h3>${esc(key)}</h3>
+          <p>${esc(a.lead)}</p>
+          <div class="viz">
+            ${a.viz.map(x=>`<figure>${pie(x[2])}<figcaption><b>${x[2]}%</b>${esc(x[0])}</figcaption></figure>`).join("")}
+          </div>
+        </label>`;
+      }).join("")}
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:14px">
+      <div>
+        <h2 style="margin:0 0 4px">2. Facilities &amp; Applicable GHG Protocol Categories</h2>
+        <p class="hint" style="font-size:13.5px">Add facilities and tick each applicable category under Scope 1 (7 categories), Scope 2 (2 categories), and Scope 3 (15 categories).</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="btn sm" id="taAddFac" ${canFac?"":"disabled"}>+ Add Facility &amp; Select Categories</button>
+      </div>
+    </div>
+
+    <div class="sumrow">
+      <span class="chip"><b>${k.n}</b> facilities</span>
+      <span class="chip s1"><b>${k.s1}</b> Scope 1</span>
+      <span class="chip s2"><b>${k.s2}</b> Scope 2</span>
+      <span class="chip s3"><b>${k.s3}</b> Scope 3</span>
+      <span class="chip"><b>${k.full}</b> 100% counted</span>
+      <span class="chip"><b>${k.part}</b> partial</span>
+      <span class="chip ${k.issues?"bad":""}"><b>${k.issues}</b> validation issues</span>
+    </div>
+
+    ${!t.facilities.length ? `<div class="tablewrap"><div class="empty"><b>No facilities added yet</b>Click "+ Add Facility &amp; Select Categories" above to add a facility and tick applicable Scope 1, 2 &amp; 3 categories.</div></div>` : `
+    <div class="tablewrap">
+      <table style="min-width:1180px">
+        <thead>
+          <tr>
+            <th>Facility ID</th>
+            <th>Facility Name</th>
+            <th>Country</th>
+            <th>Grid Location<small>If Scope 2 active</small></th>
+            <th class="cond">${esc(fld)}<small>${t.approach==="Equity Share"?"0–100%":"Yes/No"}</small></th>
+            <th>Applicable GHG Categories &amp; Methods</th>
+            <th class="auto">Share</th>
+            <th class="auto">Status</th>
+            <th><span class="sr">Remove</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${t.facilities.map((f,i)=>{
+            const st = statusOf(t, f);
+            const inc = inclusion(t, f);
+            const s1n = f.s1 ? (f.s1Cats||[]).length : 0;
+            const s2n = f.s2 ? (f.s2Cats||[]).length : 0;
+            const s3n = f.s3 ? (f.s3Cats||[]).length : 0;
+            let ctrl = "";
+            if(t.approach==="Equity Share"){
+              ctrl = `<input type="number" min="0" max="100" step="0.01" data-i="${i}" data-f="equity" value="${esc(f.equity)}" ${canFac?"":"disabled"} style="width:82px">`;
+            } else {
+              const key = t.approach==="Operational Control"?"op":"fin";
+              ctrl = `<select data-i="${i}" data-f="${key}" ${canFac?"":"disabled"} style="width:84px">
+                <option value="">Select</option>
+                <option ${f[key]==="Yes"?"selected":""}>Yes</option>
+                <option ${f[key]==="No"?"selected":""}>No</option>
+              </select>`;
+            }
+            return `<tr>
+              <td><input type="text" data-i="${i}" data-f="id" value="${esc(f.id)}" maxlength="20" ${canFac?"":"disabled"} style="width:124px"></td>
+              <td><input type="text" data-i="${i}" data-f="name" value="${esc(f.name)}" maxlength="120" ${canFac?"":"disabled"} style="min-width:185px"></td>
+              <td><select data-i="${i}" data-f="country" ${canFac?"":"disabled"} style="min-width:125px">
+                ${COUNTRIES.map(c=>`<option ${c===f.country?"selected":""}>${esc(c)}</option>`).join("")}
+              </select></td>
+              <td><select data-i="${i}" data-f="grid" ${(!canFac||!f.s2)?"disabled":""} style="min-width:180px">
+                <option value="">${f.s2?"Select grid":"Not needed"}</option>
+                ${GRIDS.map(g=>`<option ${g.name===f.grid?"selected":""}>${esc(g.name)}</option>`).join("")}
+              </select></td>
+              <td>${ctrl}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <button type="button" class="btn sec sm" data-cfg="${i}">
+                    Select Categories &amp; Methods (${s1n+s2n+s3n})
+                  </button>
+                  <div style="font-size:12px">
+                    ${s1n?`<span class="tag s1">Scope 1: ${s1n}/7</span> `:""}
+                    ${s2n?`<span class="tag s2">Scope 2: ${s2n}/2 (${methodShort(f.s2Method)})</span> `:""}
+                    ${s3n?`<span class="tag s3">Scope 3: ${s3n}/15</span>`:""}
+                    ${(!s1n&&!s2n&&!s3n)?`<span class="hint">None ticked yet</span>`:""}
+                  </div>
+                </div>
+              </td>
+              <td class="pct ro">${esc(pctText(inc))}</td>
+              <td class="ro"><span class="st ${st==="OK"?"ok":"no"}">${esc(st)}</span></td>
+              <td><button type="button" class="iconbtn" data-del="${i}" ${canFac?"":"disabled"} title="Remove facility">&#10005;</button></td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>`}
+
+    <div class="row-actions">
+      <button type="button" class="btn sec" id="taGoUsers">Next: Assign Operators / Self to Facilities &amp; Categories &rarr;</button>
+      <span class="sp"></span>
+      <button type="button" class="btn" id="taGoDataEntry">Fill Facility Activity Data (Admin) &rarr;</button>
+    </div>
+  `;
+
+  $$("input[name=taAppr]", box).forEach(r=>r.onchange=()=>{ t.approach = r.value; save(); render(); });
+
+  if($("#taAddFac")){
+    $("#taAddFac").onclick = ()=>{
+      const num = String(t.facilities.length + 1).padStart(4,"0");
+      t.facilities.push({
+        id: "FAC-IN-" + num,
+        name: "New Facility " + (t.facilities.length + 1),
+        country: "India",
+        grid: "India - National Average",
+        equity: 100, op: "Yes", fin: "Yes",
+        s1: true, s2: true, s3: true,
+        s1Cats: ["S1-1"], s2Cats: ["S2-1"], s3Cats: [],
+        s2Method: "S2_DUAL",
+        catMethods: {"S1-1":"S1_FUEL"},
+        assignedUsers: [SELF_ADMIN_ID],
+        catOperators: {"S1-1": SELF_ADMIN_ID, "S2-1": SELF_ADMIN_ID}
+      });
+      save();
+      const newIdx = t.facilities.length - 1;
+      render();
+      openCatModal(newIdx);
+    };
+  }
+
+  $$("[data-i]", box).forEach(el=>{
+    const handler = ()=>{
+      const i = Number(el.dataset.i);
+      const k = el.dataset.f;
+      t.facilities[i][k] = el.value;
+      save();
+    };
+    el.addEventListener(el.type==="text"||el.type==="number" ? "input" : "change", handler);
+    if(el.dataset.f==="id"){
+      el.addEventListener("blur", ()=>{
+        const i = Number(el.dataset.i);
+        t.facilities[i].id = normId(el.value);
+        save();
+        render();
+      });
+    }
+  });
+
+  $$("[data-cfg]", box).forEach(b=>b.onclick=()=>openCatModal(Number(b.dataset.cfg)));
+  $$("[data-del]", box).forEach(b=>b.onclick=()=>{
+    if(confirm("Remove this facility from " + t.name + "?")){
+      t.facilities.splice(Number(b.dataset.del), 1);
+      save();
+      render();
+    }
+  });
+
+  $("#taGoUsers").onclick = ()=>{ S.tenantSubTab = "users"; save(); render(); };
+  $("#taGoDataEntry").onclick = ()=>{ S.tenantSubTab = "data_entry"; save(); render(); };
+}
+
+/* ---------- Modal: Facility Profile + All Scope 1, 2 & 3 GHG Protocol Categories & Methods ---------- */
+let modalFacIdx = null;
+function openCatModal(idx){
+  modalFacIdx = idx;
+  S.modalScopeTab = "ALL";
+  renderCatModal();
+  $("#catModal").hidden = false;
+}
+function renderCatModal(){
+  const t = activeTenant();
+  const f = t.facilities[modalFacIdx];
+  if(!f) return;
+  const canEdit = t.permissions.canConfigureScopes && !t.lock;
+  const dis = canEdit ? "" : "disabled";
+  f.catMethods = f.catMethods || {};
+  f.s1Cats = f.s1Cats || [];
+  f.s2Cats = f.s2Cats || [];
+  f.s3Cats = f.s3Cats || [];
+
+  const s1Count = f.s1Cats.length;
+  const s2Count = f.s2Cats.length;
+  const s3Count = f.s3Cats.length;
+  const tab = S.modalScopeTab || "ALL";
+
+  $("#catModalTitle").textContent = `${f.name} (${normId(f.id)}) — Facility & GHG Protocol Categories`;
+
+  $("#catModalNav").innerHTML = `
+    <span style="font-size:12px;font-weight:700;color:var(--muted);margin-right:4px">GHG Scope View:</span>
+    <button type="button" class="m-pill ${tab==="ALL"?"active":""}" data-mtab="ALL">All Scopes (${s1Count+s2Count+s3Count}/24)</button>
+    <button type="button" class="m-pill ${tab==="S1"?"active":""}" data-mtab="S1">Scope 1: Direct (${s1Count}/7)</button>
+    <button type="button" class="m-pill ${tab==="S2"?"active":""}" data-mtab="S2">Scope 2: Purchased Energy (${s2Count}/2)</button>
+    <button type="button" class="m-pill ${tab==="S3"?"active":""}" data-mtab="S3">Scope 3: Value Chain (${s3Count}/15)</button>
+  `;
+
+  let html = `
+    <div class="grid3" style="background:var(--paper);padding:14px 16px;border-radius:8px;border:1px solid var(--line);margin-bottom:18px">
+      <div>
+        <label class="f" for="mFacId">Facility ID</label>
+        <input type="text" id="mFacId" value="${esc(f.id)}" ${dis}>
+      </div>
+      <div>
+        <label class="f" for="mFacName">Facility Name</label>
+        <input type="text" id="mFacName" value="${esc(f.name)}" ${dis}>
+      </div>
+      <div>
+        <label class="f" for="mFacCountry">Country</label>
+        <select id="mFacCountry" ${dis}>
+          ${COUNTRIES.map(c=>`<option ${c===f.country?"selected":""}>${esc(c)}</option>`).join("")}
+        </select>
+      </div>
+      <div>
+        <label class="f" for="mFacGrid">Electricity Grid Region</label>
+        <select id="mFacGrid" ${dis}>
+          <option value="">Select grid</option>
+          ${GRIDS.map(g=>`<option ${g.name===f.grid?"selected":""}>${esc(g.name)}</option>`).join("")}
+        </select>
+      </div>
+      <div>
+        <label class="f" for="mFacBound">${esc(approachField(t))}</label>
+        ${t.approach==="Equity Share"
+          ? `<input type="number" id="mFacEquity" min="0" max="100" step="0.01" value="${esc(f.equity)}" ${dis}>`
+          : `<select id="mFacCtrl" ${dis}>
+              <option value="">Select</option>
+              <option ${(t.approach==="Operational Control"?f.op:f.fin)==="Yes"?"selected":""}>Yes</option>
+              <option ${(t.approach==="Operational Control"?f.op:f.fin)==="No"?"selected":""}>No</option>
+            </select>`
+        }
+      </div>
+    </div>
+  `;
+
+  if(tab === "ALL" || tab === "S1"){
+    html += `<div class="scope-box">
+      <div class="scope-box-head">
+        <span>Scope 1 — Direct GHG Emissions (7 GHG Protocol / ISO 14064-1 Categories)</span>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn sec sm" id="s1All" ${dis}>Tick All 7</button>
+          <button type="button" class="btn sec sm" id="s1Clear" ${dis}>Clear</button>
+        </div>
+      </div>
+      <div class="cat-cols-hdr">
+        <div>GHG Protocol Category (Tick Applicable)</div>
+        <div>Calculation Method</div>
+      </div>
+      <div class="cat-list">
+        ${GHG_CATEGORIES.scope1.map(c=>{
+          const chk = f.s1Cats.includes(c.id);
+          const curM = f.catMethods[c.id] || "S1_FUEL";
+          return `<div class="cat-row ${chk?"":"disabled-cat"}">
+            <label class="cat-left">
+              <input type="checkbox" data-scope="s1Cats" value="${c.id}" ${chk?"checked":""} ${dis}>
+              <span><b>${c.code}:</b> ${esc(c.name)}</span>
+            </label>
+            <select data-cmethod="${c.id}" ${(!canEdit||!chk)?"disabled":""}>
+              ${SCOPE1_METHODS.map(m=>`<option value="${m.id}" ${m.id===curM?"selected":""}>${esc(m.label)}</option>`).join("")}
+            </select>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }
+
+  if(tab === "ALL" || tab === "S2"){
+    html += `<div class="scope-box">
+      <div class="scope-box-head s2h">
+        <span>Scope 2 — Energy Indirect GHG Emissions (2 Categories &amp; Reporting Method)</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <label style="font-size:12.5px;font-weight:600">Scope 2 Method:</label>
+          <select id="modalS2Method" ${dis} style="min-height:32px;padding:3px 8px;font-size:12.5px;width:auto">
+            ${SCOPE2_METHODS.map(m=>`<option value="${m.id}" ${m.id===(f.s2Method||"S2_DUAL")?"selected":""}>${esc(m.label)}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+      <div class="cat-cols-hdr">
+        <div>GHG Protocol Category (Tick Applicable)</div>
+        <div>Active Reporting Method</div>
+      </div>
+      <div class="cat-list">
+        ${GHG_CATEGORIES.scope2.map(c=>{
+          const chk = f.s2Cats.includes(c.id);
+          return `<div class="cat-row ${chk?"":"disabled-cat"}">
+            <label class="cat-left">
+              <input type="checkbox" data-scope="s2Cats" value="${c.id}" ${chk?"checked":""} ${dis}>
+              <span><b>${c.code}:</b> ${esc(c.name)}</span>
+            </label>
+            <span class="hint">${methodLabel(f.s2Method||"S2_DUAL")}</span>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }
+
+  if(tab === "ALL" || tab === "S3"){
+    const upstreamCats = GHG_CATEGORIES.scope3.filter(c=>c.group==="Upstream");
+    const downstreamCats = GHG_CATEGORIES.scope3.filter(c=>c.group==="Downstream");
+    const renderS3Rows = list => list.map(c=>{
+      const chk = f.s3Cats.includes(c.id);
+      const curM = f.catMethods[c.id] || "S3_ACT";
+      return `<div class="cat-row ${chk?"":"disabled-cat"}">
+        <label class="cat-left">
+          <input type="checkbox" data-scope="s3Cats" value="${c.id}" ${chk?"checked":""} ${dis}>
+          <span><b>${c.code}:</b> ${esc(c.name)}</span>
+        </label>
+        <select data-cmethod="${c.id}" ${(!canEdit||!chk)?"disabled":""}>
+          ${SCOPE3_METHODS.map(m=>`<option value="${m.id}" ${m.id===curM?"selected":""}>${esc(m.label)}</option>`).join("")}
+        </select>
+      </div>`;
+    }).join("");
+
+    html += `<div class="scope-box">
+      <div class="scope-box-head s3h">
+        <span>Scope 3 — Value Chain GHG Emissions (15 GHG Protocol Categories)</span>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn sec sm" id="s3All" ${dis}>Tick All 15</button>
+          <button type="button" class="btn sec sm" id="s3Clear" ${dis}>Clear</button>
+        </div>
+      </div>
+      <div class="cat-cols-hdr">
+        <div>GHG Protocol Category (Tick Applicable)</div>
+        <div>Calculation Method</div>
+      </div>
+      <div class="cat-group-hdr">Upstream Value Chain Activities (Categories 1 – 8)</div>
+      <div class="cat-list">${renderS3Rows(upstreamCats)}</div>
+      <div class="cat-group-hdr">Downstream Value Chain Activities (Categories 9 – 15)</div>
+      <div class="cat-list">${renderS3Rows(downstreamCats)}</div>
+    </div>`;
+  }
+
+  $("#catModalBody").innerHTML = html;
+
+  $$("[data-mtab]", $("#catModalNav")).forEach(b=>b.onclick=()=>{
+    S.modalScopeTab = b.dataset.mtab;
+    renderCatModal();
+  });
+
+  if($("#mFacId")) $("#mFacId").oninput = e=>{ f.id = e.target.value; save(); };
+  if($("#mFacName")) $("#mFacName").oninput = e=>{ f.name = e.target.value; save(); };
+  if($("#mFacCountry")) $("#mFacCountry").onchange = e=>{ f.country = e.target.value; save(); };
+  if($("#mFacGrid")) $("#mFacGrid").onchange = e=>{ f.grid = e.target.value; save(); };
+  if($("#mFacEquity")) $("#mFacEquity").oninput = e=>{ f.equity = e.target.value; save(); };
+  if($("#mFacCtrl")) $("#mFacCtrl").onchange = e=>{
+    if(t.approach==="Operational Control") f.op = e.target.value; else f.fin = e.target.value;
+    save();
+  };
+
+  $$("input[data-scope]", $("#catModalBody")).forEach(chk=>{
+    chk.onchange = ()=>{
+      const key = chk.dataset.scope;
+      const arr = new Set(f[key]||[]);
+      if(chk.checked) arr.add(chk.value); else arr.delete(chk.value);
+      f[key] = Array.from(arr);
+      f.s1 = f.s1Cats.length > 0;
+      f.s2 = f.s2Cats.length > 0;
+      f.s3 = f.s3Cats.length > 0;
+      save();
+      renderCatModal();
+    };
+  });
+
+  $$("select[data-cmethod]", $("#catModalBody")).forEach(sel=>{
+    sel.onchange = ()=>{
+      f.catMethods[sel.dataset.cmethod] = sel.value;
+      save();
+    };
+  });
+
+  if($("#modalS2Method")) $("#modalS2Method").onchange = e=>{ f.s2Method = e.target.value; save(); renderCatModal(); };
+  if($("#s1All")) $("#s1All").onclick = ()=>{ f.s1Cats = GHG_CATEGORIES.scope1.map(x=>x.id); f.s1 = true; save(); renderCatModal(); };
+  if($("#s1Clear")) $("#s1Clear").onclick = ()=>{ f.s1Cats = []; f.s1 = false; save(); renderCatModal(); };
+  if($("#s3All")) $("#s3All").onclick = ()=>{ f.s3Cats = GHG_CATEGORIES.scope3.map(x=>x.id); f.s3 = true; save(); renderCatModal(); };
+  if($("#s3Clear")) $("#s3Clear").onclick = ()=>{ f.s3Cats = []; f.s3 = false; save(); renderCatModal(); };
+}
+$("#closeCatModal").onclick = ()=>{ $("#catModal").hidden = true; render(); };
+$("#saveCatModal").onclick = ()=>{
+  const t = activeTenant();
+  const f = t.facilities[modalFacIdx];
+  if(f) f.id = normId(f.id);
+  $("#catModal").hidden = true;
+  save();
+  render();
+  toast("Facility & GHG Protocol category selections saved.");
+};
+
+/* ---------- Tenant Sub-Tab 2: Data Entry Operators & Per-Category Assignment (Includes Tenant Admin Self-Assignment) ---------- */
+function renderTenantUsersTab(box, t, locked){
+  const canUsers = t.permissions.canManageUsers && !locked;
+  const actors = getAllAssignableActors(t);
+
+  box.innerHTML = `
+    <h2>Data Entry Operators &amp; Per-Category Facility Assignments</h2>
+    <p class="hint" style="font-size:13.5px;margin-bottom:16px">Add Data Entry Operators or <b>assign yourself (${esc(t.tenantAdmin.name)} — Tenant Admin)</b> to specific facilities and individual GHG Protocol categories. Any categories assigned to yourself can be filled directly in <b>Tab 3: Fill Facility Activity Data</b>.</p>
+
+    <div class="grid3" style="background:var(--paper);padding:16px;border-radius:8px;border:1px solid var(--line);margin-bottom:20px">
+      <div>
+        <label class="f" for="uName">Operator Full Name</label>
+        <input type="text" id="uName" placeholder="e.g., Rohan Desai" ${canUsers?"":"disabled"}>
+      </div>
+      <div>
+        <label class="f" for="uEmail">Corporate Email</label>
+        <input type="email" id="uEmail" placeholder="rohan.d@company.com" ${canUsers?"":"disabled"}>
+      </div>
+      <div>
+        <label class="f" for="uDept">Department / Function</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="uDept" placeholder="e.g., Fleet & Logistics" ${canUsers?"":"disabled"}>
+          <button type="button" class="btn" id="addUserBtn" ${canUsers?"":"disabled"} style="white-space:nowrap">+ Add Operator</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tablewrap" style="margin-bottom:24px">
+      <table>
+        <thead>
+          <tr>
+            <th>User / Role</th>
+            <th>Email</th>
+            <th>Department</th>
+            <th>Assigned Categories Count</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Tenant Admin Self Row -->
+          <tr style="background:#F4FAFA">
+            <td><b>${esc(t.tenantAdmin.name)}</b> <span class="tag s1">Tenant Admin (Self)</span></td>
+            <td>${esc(t.tenantAdmin.email)}</td>
+            <td>Organization Administration</td>
+            <td><b>${t.facilities.reduce((sum,f)=>sum+getFacilityAssignedCatsForActor(f, SELF_ADMIN_ID).length, 0)}</b> categories</td>
+            <td>
+              <button type="button" class="btn sm" id="selfOpenDeBtn">Fill My Assigned Data &rarr;</button>
+            </td>
+          </tr>
+          ${t.users.map((u, idx)=>{
+            const cnt = t.facilities.reduce((sum,f)=>sum+getFacilityAssignedCatsForActor(f, u.id).length, 0);
+            return `<tr>
+              <td><b>${esc(u.name)}</b> <span class="tag op">Data Entry Operator</span></td>
+              <td>${esc(u.email)}</td>
+              <td>${esc(u.dept)}</td>
+              <td><b>${cnt}</b> categories</td>
+              <td style="white-space:nowrap">
+                <button type="button" class="btn purple sm" data-open-op="${u.id}">Open Operator Workspace &rarr;</button>
+                <button type="button" class="iconbtn" data-del-u="${idx}" ${canUsers?"":"disabled"}>&#10005;</button>
+              </td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Per-Facility &amp; Per-Category Person Assignment</h3>
+    <p class="hint" style="font-size:13px;margin-bottom:12px">Assign either yourself (<b>${esc(t.tenantAdmin.name)} — Tenant Admin</b>) or a Data Entry Operator to each enabled category per facility.</p>
+    ${t.facilities.map((f, fIdx)=>{
+      f.catOperators = f.catOperators || {};
+      const activeCats = getActiveCategoryIds(f);
+      return `<div class="scope-box" style="margin-bottom:16px">
+        <div class="scope-box-head">
+          <span>${esc(f.name)} (${esc(normId(f.id))}) — ${activeCats.length} Enabled Categories</span>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <button type="button" class="btn sec sm" data-assign-self-fac="${fIdx}" ${canUsers?"":"disabled"}>Assign All Categories to Myself (${esc(t.tenantAdmin.name)})</button>
+          </div>
+        </div>
+        ${!activeCats.length ? `<div class="empty" style="padding:16px">No GHG categories ticked for this facility yet.</div>` : `
+        <div class="cat-list">
+          ${activeCats.map(item=>{
+            const meta = [...GHG_CATEGORIES.scope1, ...GHG_CATEGORIES.scope2, ...GHG_CATEGORIES.scope3].find(x=>x.id===item.id);
+            const curActor = f.catOperators[item.id] || "";
+            return `<div class="cat-row">
+              <div>
+                <span class="tag ${item.scope.toLowerCase()}">${item.scope} &bull; ${meta?meta.code:item.id}</span>
+                <b style="margin-left:6px">${meta?esc(meta.name):item.id}</b>
+              </div>
+              <select data-assign-fac="${fIdx}" data-assign-cat="${item.id}" ${canUsers?"":"disabled"}>
+                <option value="">-- Unassigned --</option>
+                ${actors.map(a=>`<option value="${a.id}" ${a.id===curActor?"selected":""}>${esc(a.name)}</option>`).join("")}
+              </select>
+            </div>`;
+          }).join("")}
+        </div>`}
+      </div>`;
+    }).join("")}
+  `;
+
+  if($("#selfOpenDeBtn")){
+    $("#selfOpenDeBtn").onclick = ()=>{ S.tenantSubTab = "data_entry"; save(); render(); };
+  }
+
+  if($("#addUserBtn")){
+    $("#addUserBtn").onclick = ()=>{
+      const name = $("#uName").value.trim();
+      const email = $("#uEmail").value.trim();
+      const dept = $("#uDept").value.trim() || "Operations";
+      if(!name || !email){ toast("Please enter both name and email."); return; }
+      t.users.push({ id: "u_" + Date.now(), name, email, role: "Data Entry Operator", dept });
+      save();
+      render();
+      toast("Data Entry Operator " + name + " added.");
+    };
+  }
+
+  $$("[data-assign-self-fac]", box).forEach(b=>b.onclick=()=>{
+    const f = t.facilities[Number(b.dataset.assignSelfFac)];
+    f.catOperators = f.catOperators || {};
+    getActiveCategoryIds(f).forEach(item=>{ f.catOperators[item.id] = SELF_ADMIN_ID; });
+    save();
+    render();
+    toast(`Assigned all enabled categories on ${f.name} to ${t.tenantAdmin.name} (Tenant Admin).`);
+  });
+
+  $$("[data-assign-fac]", box).forEach(sel=>{
+    sel.onchange = ()=>{
+      const f = t.facilities[Number(sel.dataset.assignFac)];
+      f.catOperators = f.catOperators || {};
+      f.catOperators[sel.dataset.assignCat] = sel.value;
+      save();
+      render();
+      toast("Category assignment updated.");
+    };
+  });
+
+  $$("[data-open-op]", box).forEach(b=>b.onclick=()=>{
+    S.activeOpUserId = b.dataset.openOp;
+    setMode("operator");
+  });
+
+  $$("[data-del-u]", box).forEach(b=>b.onclick=()=>{
+    const u = t.users[Number(b.dataset.delU)];
+    if(confirm("Remove user " + u.name + "?")){
+      t.facilities.forEach(f=>{
+        if(f.catOperators){
+          Object.keys(f.catOperators).forEach(cid=>{
+            if(f.catOperators[cid] === u.id) f.catOperators[cid] = "";
+          });
+        }
+      });
+      t.users.splice(Number(b.dataset.delU), 1);
+      save();
+      render();
+    }
+  });
+}
+
+/* ---------- Tenant Sub-Tab 3: Tenant Admin Direct Facility Data Entry ---------- */
+function renderTenantDataEntryTab(box, t, locked){
+  if(!t.facilities.length){
+    box.innerHTML = `<div class="empty"><b>No facilities configured yet</b>Add a facility in Tab 1 first before entering facility activity data.</div>`;
+    return;
+  }
+
+  let fac = t.facilities.find(f=>f.id===S.activeFacilityId) || t.facilities[0];
+  S.activeFacilityId = fac.id;
+
+  const selfCats = getFacilityAssignedCatsForActor(fac, SELF_ADMIN_ID);
+  const allFacilityCats = getActiveCategoryIds(fac);
+
+  // Tenant Admin can fill data for categories assigned to themselves, or toggle to view/fill all enabled facility categories
+  const showAllFacCats = S.adminShowAllCats === true;
+  const activeCatItems = showAllFacCats ? allFacilityCats : (selfCats.length ? selfCats : allFacilityCats);
+
+  const enabledCats = [];
+  activeCatItems.forEach(item=>{
+    if(item.scope === "S1"){
+      const c = GHG_CATEGORIES.scope1.find(x=>x.id===item.id);
+      if(c) enabledCats.push({scope:"S1", id:c.id, code:c.code, name:c.name, method:(fac.catMethods||{})[c.id]||"S1_FUEL"});
+    } else if(item.scope === "S2"){
+      const c = GHG_CATEGORIES.scope2.find(x=>x.id===item.id);
+      if(c) enabledCats.push({scope:"S2", id:c.id, code:c.code, name:c.name, method:fac.s2Method||"S2_DUAL"});
+    } else if(item.scope === "S3"){
+      const c = GHG_CATEGORIES.scope3.find(x=>x.id===item.id);
+      if(c) enabledCats.push({scope:"S3", id:c.id, code:c.code, name:c.name, method:(fac.catMethods||{})[c.id]||"S3_ACT"});
+    }
+  });
+
+  if(!enabledCats.length){
+    box.innerHTML = `<div class="empty"><b>No GHG categories enabled on ${esc(fac.name)}</b>Tick applicable Scope 1, 2, or 3 categories in Tab 1 first.</div>`;
+    return;
+  }
+
+  let curCat = enabledCats.find(x=>`${x.scope}:${x.id}`===S.activeCatKey) || enabledCats[0];
+  S.activeCatKey = `${curCat.scope}:${curCat.id}`;
+
+  const facEntries = t.entries.filter(e=>e.facilityId===fac.id);
+  const submitterLabel = `${t.tenantAdmin.name} (Tenant Admin)`;
+
+  box.innerHTML = `
+    <div class="infobar" style="margin-bottom:14px">
+      <div>
+        <b>Tenant Admin Facility Data Entry:</b> ${esc(t.tenantAdmin.name)} &bull;
+        <b>Self-Assigned Categories on ${esc(fac.name)}:</b> ${selfCats.length} of ${allFacilityCats.length}
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label class="chk" style="background:#fff">
+          <input type="checkbox" id="taShowAllCatsChk" ${showAllFacCats?"checked":""}>
+          <span>Show all ${allFacilityCats.length} facility categories (Admin Override)</span>
+        </label>
+        <select id="taDeFacSel" style="min-height:32px;padding:3px 8px;font-size:13px;width:auto">
+          ${t.facilities.map(f=>`<option value="${f.id}" ${f.id===fac.id?"selected":""}>${esc(f.name)} (${esc(normId(f.id))})</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    <div class="de-layout">
+      <aside class="cat-nav">
+        ${["S1","S2","S3"].map(sc=>{
+          const items = enabledCats.filter(x=>x.scope===sc);
+          if(!items.length) return "";
+          const title = sc==="S1"?"Scope 1 Categories":sc==="S2"?"Scope 2 Categories":"Scope 3 Categories";
+          return `<div class="cat-nav-group">
+            <div class="cat-nav-title">${title}</div>
+            ${items.map(it=>{
+              const key = `${it.scope}:${it.id}`;
+              const cnt = facEntries.filter(e=>e.catId===it.id).length;
+              const assignee = actorNameById(t, (fac.catOperators||{})[it.id]);
+              return `<button type="button" class="cat-nav-item ${key===S.activeCatKey?"active":""}" data-cat="${key}">
+                <span><b>${it.code}:</b> ${esc(it.name)}<br><span class="hint">Assigned: ${esc(assignee)}</span></span>
+                <span class="tag">${cnt}</span>
+              </button>`;
+            }).join("")}
+          </div>`;
+        }).join("")}
+      </aside>
+
+      <div>
+        ${renderActivityEntryFormAndTable(fac, curCat, submitterLabel, facEntries, locked)}
+      </div>
+    </div>
+  `;
+
+  $("#taShowAllCatsChk").onchange = e=>{ S.adminShowAllCats = e.target.checked; save(); render(); };
+  $("#taDeFacSel").onchange = e=>{ S.activeFacilityId = e.target.value; save(); render(); };
+  $$("[data-cat]", box).forEach(b=>b.onclick=()=>{ S.activeCatKey = b.dataset.cat; save(); render(); });
+
+  bindActivityEntryEvents(t, fac, curCat, submitterLabel, enabledCats, locked);
+}
+
+/* ---------- Tenant Sub-Tab 4: Consolidated GHG Summary & Lock ---------- */
+function renderTenantReviewTab(box, t, k, locked){
+  let s1Tot=0, s2LocTot=0, s2MktTot=0, s3Tot=0;
+  const rows = t.facilities.map(f=>{
+    const inc = inclusion(t, f) ?? 0;
+    const fEntries = t.entries.filter(e=>e.facilityId===f.id);
+    const s1 = fEntries.filter(e=>e.scope==="S1").reduce((a,b)=>a+b.tco2e,0) * inc;
+    const s2L = fEntries.filter(e=>e.scope==="S2").reduce((a,b)=>a+b.tco2e,0) * inc;
+    const s2M = fEntries.filter(e=>e.scope==="S2").reduce((a,b)=>a+(b.mktTco2e!=null?b.mktTco2e:b.tco2e),0) * inc;
+    const s3 = fEntries.filter(e=>e.scope==="S3").reduce((a,b)=>a+b.tco2e,0);
+    s1Tot += s1; s2LocTot += s2L; s2MktTot += s2M; s3Tot += s3;
+    return {f, inc, s1, s2L, s2M, s3, totLoc: s1+s2L+s3};
+  });
+
+  box.innerHTML = `
+    <h2>Consolidated GHG Inventory (${esc(t.approach)} Boundary)</h2>
+    <p class="hint" style="font-size:13.5px;margin-bottom:16px">Scope 1 and Scope 2 totals are automatically scaled by each facility's inclusion share under <b>${esc(t.approach)}</b>.</p>
+
+    <div class="kpi-strip">
+      <div class="kpi-card"><div class="k-lbl">Scope 1 (Consolidated)</div><div class="k-val">${fmtNum(s1Tot)} tCO2e</div></div>
+      <div class="kpi-card"><div class="k-lbl">Scope 2 (Location-Based)</div><div class="k-val">${fmtNum(s2LocTot)} tCO2e</div></div>
+      <div class="kpi-card mkt"><div class="k-lbl">Scope 2 (Market-Based)</div><div class="k-val">${fmtNum(s2MktTot)} tCO2e</div></div>
+      <div class="kpi-card"><div class="k-lbl">Scope 3 (Value Chain)</div><div class="k-val">${fmtNum(s3Tot)} tCO2e</div></div>
+      <div class="kpi-card hi"><div class="k-lbl">Total Footprint (Loc-Based)</div><div class="k-val">${fmtNum(s1Tot+s2LocTot+s3Tot)} tCO2e</div></div>
+    </div>
+
+    <div class="tablewrap" style="margin-bottom:16px">
+      <table>
+        <thead>
+          <tr>
+            <th>Facility</th>
+            <th>Inclusion Share</th>
+            <th>Scope 1 (tCO2e)</th>
+            <th>Scope 2 Loc (tCO2e)</th>
+            <th>Scope 2 Mkt (tCO2e)</th>
+            <th>Scope 3 (tCO2e)</th>
+            <th>Total (Loc-Based)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r=>`<tr>
+            <td><b>${esc(r.f.name)}</b><br><span class="hint">${esc(normId(r.f.id))}</span></td>
+            <td class="pct">${esc(pctText(r.inc))}</td>
+            <td>${fmtNum(r.s1)}</td>
+            <td>${fmtNum(r.s2L)}</td>
+            <td>${fmtNum(r.s2M)}</td>
+            <td>${fmtNum(r.s3)}</td>
+            <td><b>${fmtNum(r.totLoc)}</b></td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tools">
+      <button type="button" class="btn sec sm" id="exportJsonBtn">Download Complete Boundary &amp; Ledger (JSON)</button>
+      <span style="flex:1"></span>
+      <button type="button" class="btn" id="lockBoundaryBtn" ${(k.n>0 && k.issues===0 && !locked)?"":"disabled"}>
+        ${locked ? "Boundary Approved & Locked" : "Approve & Lock Boundary v" + t.version}
+      </button>
+    </div>
+  `;
+
+  $("#exportJsonBtn").onclick = ()=>{
+    const blob = new Blob([JSON.stringify(t, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `TulaCarbon_${t.name.replace(/[^A-Za-z0-9]+/g,"_")}_Inventory.json`;
+    a.click();
+  };
+  $("#lockBoundaryBtn").onclick = ()=>{
+    if(!confirm("Approve and lock boundary v" + t.version + " for " + t.name + "?")) return;
+    t.lock = { version: t.version, at: new Date().toISOString(), by: t.tenantAdmin.name };
+    save();
+    render();
+    toast("Boundary v" + t.version + " locked.");
+  };
+}
+
+/* ==========================================================================
+   VIEW 3: DATA ENTRY OPERATOR WORKSPACE (WORK-FOCUSED, NO EMISSIONS DASHBOARD)
+   ========================================================================== */
+function viewDataEntry(v){
+  const t = activeTenant();
+  const opUser = t.users.find(u=>u.id===S.activeOpUserId) || t.users[0];
+
+  if(!opUser){
+    v.innerHTML = `<section class="panel"><div class="empty"><b>No Data Entry Operators found</b>Ask the Tenant Admin to add users in Tab 2 first.</div></section>`;
+    return;
+  }
+
+  const assignedFacs = t.facilities.filter(f => getFacilityAssignedCatsForActor(f, opUser.id).length > 0);
+
+  if(!assignedFacs.length){
+    v.innerHTML = `<section class="panel">
+      <div class="infobar">
+        <div><b>Logged in as Data Entry Operator:</b> ${esc(opUser.name)} (${esc(opUser.dept)}) &bull; <b>Organization:</b> ${esc(t.name)}</div>
+        <div style="margin-left:auto">
+          <select id="opSwitchUser" style="min-height:32px;padding:3px 8px;font-size:13px;width:auto">
+            ${t.users.map(u=>`<option value="${u.id}" ${u.id===opUser.id?"selected":""}>Switch Operator: ${esc(u.name)}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+      <div class="empty">
+        <b>No GHG Protocol categories assigned to ${esc(opUser.name)} yet</b>
+        Ask the Tenant Admin (${esc(t.tenantAdmin.name)}) to assign Scope 1, 2, or 3 categories to ${esc(opUser.name)}.
+      </div>
+    </section>`;
+    $("#opSwitchUser").onchange = e=>{ S.activeOpUserId = e.target.value; save(); render(); };
+    return;
+  }
+
+  let fac = assignedFacs.find(f=>f.id===S.activeFacilityId) || assignedFacs[0];
+  S.activeFacilityId = fac.id;
+
+  const assignedCatItems = getFacilityAssignedCatsForActor(fac, opUser.id);
+  const enabledCats = [];
+  assignedCatItems.forEach(item=>{
+    if(item.scope === "S1"){
+      const c = GHG_CATEGORIES.scope1.find(x=>x.id===item.id);
+      if(c) enabledCats.push({scope:"S1", id:c.id, code:c.code, name:c.name, method:(fac.catMethods||{})[c.id]||"S1_FUEL"});
+    } else if(item.scope === "S2"){
+      const c = GHG_CATEGORIES.scope2.find(x=>x.id===item.id);
+      if(c) enabledCats.push({scope:"S2", id:c.id, code:c.code, name:c.name, method:fac.s2Method||"S2_DUAL"});
+    } else if(item.scope === "S3"){
+      const c = GHG_CATEGORIES.scope3.find(x=>x.id===item.id);
+      if(c) enabledCats.push({scope:"S3", id:c.id, code:c.code, name:c.name, method:(fac.catMethods||{})[c.id]||"S3_ACT"});
+    }
+  });
+
+  let curCat = enabledCats.find(x=>`${x.scope}:${x.id}`===S.activeCatKey) || enabledCats[0];
+  if(curCat) S.activeCatKey = `${curCat.scope}:${curCat.id}`;
+
+  const facEntries = t.entries.filter(e=>e.facilityId===fac.id);
+  const myEntriesCount = facEntries.filter(e=>e.enteredBy===opUser.name).length;
+  const completedCatCount = enabledCats.filter(c=>facEntries.some(e=>e.catId===c.id)).length;
+  const pendingCatCount = enabledCats.length - completedCatCount;
+
+  v.innerHTML = `<section class="panel">
+    <div class="infobar" style="background:var(--purple-soft);border-color:#C7B3DF;color:var(--purple)">
+      <div>
+        <b>My Assigned Work — Data Entry Operator:</b> ${esc(opUser.name)} (${esc(opUser.dept)}) &bull;
+        <b>Organization:</b> ${esc(t.name)}
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <select id="opSwitchUser" aria-label="Switch Data Entry Operator" style="min-height:32px;padding:3px 8px;font-size:13px;width:auto">
+          ${t.users.map(u=>`<option value="${u.id}" ${u.id===opUser.id?"selected":""}>Operator: ${esc(u.name)}</option>`).join("")}
+        </select>
+        <select id="opSwitchFac" aria-label="Select Assigned Facility" style="min-height:32px;padding:3px 8px;font-size:13px;width:auto">
+          ${assignedFacs.map(f=>`<option value="${f.id}" ${f.id===fac.id?"selected":""}>${esc(f.name)} (${esc(normId(f.id))})</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    <!-- Work-Focused Task Strip (No Emissions Dashboard for Operators) -->
+    <div class="kpi-strip">
+      <div class="kpi-card"><div class="k-lbl">Assigned Facilities</div><div class="k-val">${assignedFacs.length} Site${assignedFacs.length===1?"":"s"}</div></div>
+      <div class="kpi-card"><div class="k-lbl">Assigned GHG Categories</div><div class="k-val">${enabledCats.length} Categor${enabledCats.length===1?"y":"ies"}</div></div>
+      <div class="kpi-card ${pendingCatCount>0?"mkt":"hi"}"><div class="k-lbl">Pending Categories</div><div class="k-val">${pendingCatCount} Remaining</div></div>
+      <div class="kpi-card hi"><div class="k-lbl">My Submitted Records</div><div class="k-val">${myEntriesCount} Entries</div></div>
+    </div>
+
+    <div class="de-layout">
+      <aside class="cat-nav">
+        ${["S1","S2","S3"].map(sc=>{
+          const items = enabledCats.filter(x=>x.scope===sc);
+          if(!items.length) return "";
+          const title = sc==="S1"?"Assigned Scope 1 Tasks":sc==="S2"?"Assigned Scope 2 Tasks":"Assigned Scope 3 Tasks";
+          return `<div class="cat-nav-group">
+            <div class="cat-nav-title">${title}</div>
+            ${items.map(it=>{
+              const key = `${it.scope}:${it.id}`;
+              const cnt = facEntries.filter(e=>e.catId===it.id).length;
+              return `<button type="button" class="cat-nav-item ${key===S.activeCatKey?"active":""}" data-cat="${key}">
+                <span><b>${it.code}:</b> ${esc(it.name)}<br><span class="hint">${cnt>0?`${cnt} record${cnt===1?"":"s"} logged`:"Pending submission"}</span></span>
+                <span class="tag ${cnt>0?"perm":""}">${cnt>0?"Done":"Pending"}</span>
+              </button>`;
+            }).join("")}
+          </div>`;
+        }).join("")}
+      </aside>
+
+      <div>
+        ${renderActivityEntryFormAndTable(fac, curCat, opUser.name, facEntries, !!t.lock)}
+      </div>
+    </div>
+  </section>`;
+
+  $("#opSwitchUser").onchange = e=>{ S.activeOpUserId = e.target.value; save(); render(); };
+  $("#opSwitchFac").onchange = e=>{ S.activeFacilityId = e.target.value; save(); render(); };
+  $$("[data-cat]", v).forEach(b=>b.onclick=()=>{ S.activeCatKey = b.dataset.cat; save(); render(); });
+
+  bindActivityEntryEvents(t, fac, curCat, opUser.name, enabledCats, !!t.lock);
+}
+
+/* ==========================================================================
+   SHARED ACTIVITY ENTRY FORM & TABLE (USED BY BOTH OPERATOR & TENANT ADMIN)
+   WITH 3-TIER EMISSION FACTOR ENGINE (DEFAULT / SITE-SPECIFIC DENSITY+NCV / SUPPLIER-SPECIFIC)
+   ========================================================================== */
+function renderActivityEntryFormAndTable(fac, curCat, submitterName, facEntries, locked){
+  const defMeta = getDefaultEfMeta(curCat.id, fac);
+  const isDualS2 = curCat.scope==="S2" && curCat.method==="S2_DUAL";
+  const catEntries = facEntries.filter(e=>e.catId===curCat.id);
+  const dis = locked ? "disabled" : "";
+
+  return `
+    <div style="border:1px solid var(--line);border-radius:8px;padding:18px;background:#fff;margin-bottom:18px">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px">
+        <div>
+          <span class="tag ${curCat.scope.toLowerCase()}">${curCat.scope} &bull; ${curCat.code}</span>
+          <span class="tag" style="margin-left:4px">Method: ${esc(methodLabel(curCat.method))}</span>
+          <h2 style="margin:6px 0 2px">${esc(curCat.name)}</h2>
+          <div class="hint">Facility: <b>${esc(fac.name)} (${esc(normId(fac.id))})</b> &bull; Logging As: <b>${esc(submitterName)}</b></div>
+        </div>
+      </div>
+
+      <div class="grid3">
+        <div>
+          <label class="f" for="deSource">Activity Name *</label>
+          <input type="text" id="deSource" placeholder="e.g., Backup DG Set Diesel / Grid Meter #1" ${dis}>
+        </div>
+        <div>
+          <label class="f" for="dePeriod">Period Month *</label>
+          <select id="dePeriod" ${dis}>
+            ${PERIOD_MONTHS.map(m=>`<option>${esc(m)}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <label class="f" for="deQty">Activity Data *</label>
+          <input type="number" id="deQty" step="any" min="0" placeholder="0.00" ${dis}>
+        </div>
+        <div>
+          <label class="f" for="deUnit">Activity Data Units *</label>
+          <select id="deUnit" ${dis}>
+            ${ACTIVITY_UNITS.map(u=>`<option value="${u}" ${normUnit(u)===normUnit(defMeta.unit)?"selected":""}>${esc(u)}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <label class="f" for="deEfTier">Emission Factor Source Type *</label>
+          <select id="deEfTier" ${dis}>
+            <option value="default">1. Default / Tula AI Suggested Factor</option>
+            <option value="site_calc">2. Site-Specific EF (Calculate via Density &amp; NCV)</option>
+            <option value="supplier">3. Supplier-Specific (Direct EF)</option>
+          </select>
+        </div>
+        <div>
+          <label class="f" for="deNotes">Evidence Source (Reference) *</label>
+          <input type="text" id="deNotes" placeholder="Invoice #, meter log ID, or lab cert" ${dis}>
+        </div>
+        <div>
+          <label class="f" for="deEvidenceFile">Upload Evidence File (Optional)</label>
+          <input type="file" id="deEvidenceFile" accept=".pdf,.png,.jpg,.jpeg,.csv,.xlsx,.xls,.doc,.docx,.txt" ${dis}>
+          <span class="hint" id="deFileHint">Attach invoice, meter log, or lab report</span>
+        </div>
+      </div>
+
+      <!-- Tier 1: Default / Tula AI Suggested Factor Box -->
+      <div class="ai-box" id="tierDefaultBox">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;font-size:13px">
+          <div>
+            <span class="tag ai">Tier 1: Default / Tula AI Suggested Factor</span>
+            <b style="margin-left:6px">${defMeta.ef} kgCO2e / ${esc(defMeta.unit)}</b>
+            <span class="hint" style="display:inline;margin-left:6px">(${esc(defMeta.source)})</span>
+          </div>
+          <span class="tag match-ok" id="deUnitMatchBadge">Exact Match</span>
+        </div>
+      </div>
+
+      <!-- Tier 2: Site-Specific EF via Density & NCV (with partial/full fallback) -->
+      <div class="site-calc-box" id="tierSiteCalcBox" hidden>
+        <div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:6px">
+          Tier 2: Site-Specific Emission Factor Calculation (Density &amp; NCV)
+        </div>
+        <div class="hint" style="margin-bottom:10px">
+          Enter site-specific <b>Density</b> and/or <b>Net Calorific Value (NCV)</b>. If one is left blank, its default benchmark (Density: <b>${defMeta.defDensity}</b>, NCV: <b>${defMeta.defNcv}</b>) is used automatically. If <b>both</b> are left blank, the system automatically falls back to the <b>Default Tula AI Suggested EF (${defMeta.ef} kgCO2e/${esc(defMeta.unit)})</b>.
+        </div>
+        <div class="grid3">
+          <div>
+            <label class="f" for="deSiteDensity">Site-Specific Density (kg/L or kg/m&sup3;)</label>
+            <input type="number" id="deSiteDensity" step="any" min="0" placeholder="Blank = Default (${defMeta.defDensity})" ${dis}>
+          </div>
+          <div>
+            <label class="f" for="deSiteNcv">Site-Specific NCV (MJ/kg)</label>
+            <input type="number" id="deSiteNcv" step="any" min="0" placeholder="Blank = Default (${defMeta.defNcv})" ${dis}>
+          </div>
+          <div>
+            <label class="f" for="deSiteCalcPreview">Derived Site-Specific EF</label>
+            <input type="text" id="deSiteCalcPreview" readonly value="${defMeta.ef} kgCO2e/${esc(defMeta.unit)}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tier 3: Supplier-Specific Direct Emission Factor -->
+      <div class="supp-box" id="tierSupplierBox" hidden>
+        <div style="font-size:13px;font-weight:700;color:var(--indigo);margin-bottom:6px">
+          Tier 3: Supplier-Specific Direct Emission Factor (PCF / Utility Tariff)
+        </div>
+        <div class="grid3">
+          <div>
+            <label class="f" for="deSuppEf">Supplier-Specific EF (kgCO2e / unit) *</label>
+            <input type="number" id="deSuppEf" step="any" min="0" value="${defMeta.ef}" ${dis}>
+          </div>
+          <div>
+            <label class="f" for="deSuppEfUnit">Supplier EF Denominator Unit *</label>
+            <select id="deSuppEfUnit" ${dis}>
+              ${ACTIVITY_UNITS.map(u=>`<option value="${u}" ${normUnit(u)===normUnit(defMeta.unit)?"selected":""}>kgCO2e / ${esc(u)}</option>`).join("")}
+            </select>
+          </div>
+          <div>
+            <label class="f" for="deSuppName">Supplier / Certificate Name</label>
+            <input type="text" id="deSuppName" placeholder="e.g., Green PPA / Vendor PCF ID" ${dis}>
+          </div>
+        </div>
+      </div>
+
+      ${isDualS2 ? `
+      <div style="margin-top:12px;max-width:340px">
+        <label class="f" for="deMktEf">Market-Based Contractual EF (kgCO2e/kWh)<span class="hint">0.00 for 100% RECs/PPAs, or supplier residual mix</span></label>
+        <input type="number" id="deMktEf" step="any" min="0" value="0.00" ${dis}>
+      </div>` : ""}
+
+      <div class="calc-preview">
+        <div>
+          <span class="hint" id="deSummarySub">Active EF Mode: Default / Tula AI Suggested</span>
+          <div style="font-size:16px;font-weight:700;color:var(--teal-d)" id="dePreviewText">Ready to log activity record</div>
+        </div>
+        <button type="button" class="btn" id="deAddEntryBtn" ${dis}>+ Submit Activity Record</button>
+      </div>
+
+      <div class="dropzone">
+        <div style="font-weight:600;margin-bottom:4px">Bulk Upload Template (Scoped to Enabled Categories)</div>
+        <div class="hint" style="margin-bottom:10px">Includes <code>EF_Tier</code> (<code>default</code>, <code>site_calc</code>, or <code>supplier</code>), <code>Site_Density</code>, <code>Site_NCV</code>, and <code>Supplier_EF</code> columns.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+          <button type="button" class="btn sec sm" id="dlOpTplBtn">Download CSV Template</button>
+          <label class="btn sec sm" style="cursor:pointer;margin:0">
+            Upload Filled CSV <input type="file" id="uploadCsvInput" accept=".csv" hidden ${dis}>
+          </label>
+          <button type="button" class="btn sm" id="simUploadBtn" ${dis}>Simulate Sample CSV Upload</button>
+        </div>
+      </div>
+    </div>
+
+    <h3>Submitted Activity Records — ${esc(curCat.code)}: ${esc(curCat.name)} (${catEntries.length})</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Activity Name</th>
+            <th>Period Month</th>
+            <th>Activity Data</th>
+            <th>Applied EF &amp; Tier</th>
+            <th>Evidence Source &amp; File</th>
+            <th>Submitted By</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${!catEntries.length ? `<tr><td colspan="7" class="empty">No activity records submitted in this category yet.</td></tr>` :
+            catEntries.map(e=>{
+              const tierCls = e.efTier==="site_calc"?"site":e.efTier==="supplier"?"supp":"ai";
+              return `<tr>
+                <td><b>${esc(e.source)}</b></td>
+                <td>${esc(e.period)}</td>
+                <td><b>${Number(e.qty).toLocaleString()}</b> ${esc(e.unit)}</td>
+                <td><b>${e.ef}</b> kgCO2e/${esc(e.efUnit||e.unit)}<br><span class="tag ${tierCls}">${esc(e.efSource||"Default / Tula AI")}</span></td>
+                <td>
+                  ${e.notes ? `<div>${esc(e.notes)}</div>` : ""}
+                  ${e.evidenceFile ? `<button type="button" class="ev-link" data-dl-ev="${e.id}">&#128206; ${esc(e.evidenceFile.name)}</button>` : (!e.notes ? `<span class="hint">—</span>` : "")}
+                </td>
+                <td>${esc(e.enteredBy)}</td>
+                <td><button type="button" class="iconbtn" data-del-entry="${e.id}" title="Delete record" ${dis}>&#10005;</button></td>
+              </tr>`;
+            }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function bindActivityEntryEvents(t, fac, curCat, submitterName, enabledCats, locked){
+  const defMeta = getDefaultEfMeta(curCat.id, fac);
+  const isDualS2 = curCat.scope==="S2" && curCat.method==="S2_DUAL";
+  let pendingEvidenceFile = null;
+
+  $("#deEvidenceFile").onchange = e=>{
+    const file = e.target.files[0];
+    if(!file){ pendingEvidenceFile = null; $("#deFileHint").textContent = "Attach invoice, meter log, or lab report"; return; }
+    $("#deFileHint").textContent = `Attached: ${file.name} (${Math.max(1, Math.round(file.size/1024))} KB)`;
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      pendingEvidenceFile = {
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+        dataUrl: file.size <= 1500000 ? ev.target.result : ""
+      };
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const getCurrentResolvedEf = ()=>{
+    const tier = $("#deEfTier").value;
+    return computeEffectiveEF(tier, curCat.id, fac, {
+      density: $("#deSiteDensity").value,
+      ncv: $("#deSiteNcv").value,
+      supplierEf: $("#deSuppEf").value,
+      supplierEfUnit: $("#deSuppEfUnit").value,
+      supplierName: $("#deSuppName").value.trim()
+    });
+  };
+
+  const refreshCalcState = ()=>{
+    const tier = $("#deEfTier").value;
+    $("#tierDefaultBox").hidden  = (tier !== "default");
+    $("#tierSiteCalcBox").hidden = (tier !== "site_calc");
+    $("#tierSupplierBox").hidden = (tier !== "supplier");
+
+    const res = getCurrentResolvedEf();
+    if(tier === "site_calc"){
+      $("#deSiteCalcPreview").value = `${res.ef} kgCO2e/${res.unit} (${res.sourceTag})`;
+    }
+
+    const actUnit = $("#deUnit").value;
+    const match = resolveUnitMatch(actUnit, res.unit);
+    const badge = $("#deUnitMatchBadge");
+    if(badge){
+      badge.className = "tag " + (match.status==="exact"?"match-ok":match.status==="converted"?"match-warn":"match-bad");
+      badge.textContent = match.label;
+    }
+
+    const q = Number($("#deQty").value)||0;
+    $("#deSummarySub").textContent = `${res.sourceTag}: ${res.detail}`;
+    if(match.status === "mismatch"){
+      $("#dePreviewText").textContent = `Unit Mismatch: Activity (${actUnit}) vs EF (kgCO2e/${res.unit})`;
+    } else if(q > 0){
+      const tco2e = (q * match.factor * res.ef) / 1000;
+      $("#dePreviewText").textContent = `${q.toLocaleString()} ${actUnit} × ${res.ef} kgCO2e/${res.unit} = ${fmtNum(tco2e)} tCO2e`;
+    } else {
+      $("#dePreviewText").textContent = `Effective EF: ${res.ef} kgCO2e/${res.unit}`;
+    }
+  };
+
+  $("#deEfTier").onchange = refreshCalcState;
+  $("#deUnit").onchange = refreshCalcState;
+  $("#deQty").oninput = refreshCalcState;
+  $("#deSiteDensity").oninput = refreshCalcState;
+  $("#deSiteNcv").oninput = refreshCalcState;
+  $("#deSuppEf").oninput = refreshCalcState;
+  $("#deSuppEfUnit").onchange = refreshCalcState;
+  $("#deSuppName").oninput = refreshCalcState;
+  refreshCalcState();
+
+  $("#deAddEntryBtn").onclick = ()=>{
+    if(locked) return;
+    const src = $("#deSource").value.trim();
+    if(!src){ toast("Please enter an Activity Name."); return; }
+    const qty = Number($("#deQty").value);
+    if(!qty || qty <= 0){ toast("Enter valid Activity Data greater than 0."); return; }
+
+    const tier = $("#deEfTier").value;
+    const res = getCurrentResolvedEf();
+    const actUnit = $("#deUnit").value;
+    const match = resolveUnitMatch(actUnit, res.unit);
+
+    if(match.status === "mismatch"){
+      toast(`Cannot submit: Activity Data unit (${actUnit}) does not match EF unit (kgCO2e/${res.unit}).`);
+      return;
+    }
+
+    const convertedQty = qty * match.factor;
+    const locT = (convertedQty * res.ef) / 1000;
+    const mktEf = isDualS2 ? (Number($("#deMktEf").value)||0) : null;
+    const mktT = isDualS2 ? (convertedQty * mktEf) / 1000 : null;
+
+    t.entries.push({
+      id: "E-" + Date.now(),
+      facilityId: fac.id,
+      scope: curCat.scope,
+      catId: curCat.id,
+      method: curCat.method,
+      source: src,
+      period: $("#dePeriod").value,
+      qty,
+      unit: actUnit,
+      efUnit: res.unit,
+      unitMatch: match.label,
+      ef: res.ef,
+      efTier: tier,
+      efSource: res.sourceTag,
+      mktEf,
+      tco2e: locT,
+      mktTco2e: mktT,
+      enteredBy: submitterName,
+      notes: $("#deNotes").value.trim(),
+      evidenceFile: pendingEvidenceFile
+    });
+    save();
+    render();
+    toast(`Submitted "${src}" (${res.sourceTag}).`);
+  };
+
+  $$("[data-dl-ev]").forEach(b=>b.onclick=()=>openEvidenceFile(t, b.dataset.dlEv));
+  $$("[data-del-entry]").forEach(b=>b.onclick=()=>{
+    t.entries = t.entries.filter(x=>x.id!==b.dataset.delEntry);
+    save();
+    render();
+  });
+
+  $("#dlOpTplBtn").onclick = ()=>{
+    const headers = [
+      "Facility_ID","Scope","Category_ID","Category_Name",
+      "Activity_Name","Period_Month","Activity_Data","Activity_Data_Units",
+      "EF_Tier","Site_Density","Site_NCV","Supplier_EF","Emission_Factor_Units","Evidence_Source"
+    ];
+    const sampleRows = enabledCats.map(c=>{
+      const m = getDefaultEfMeta(c.id, fac);
+      return [
+        fac.id, c.scope, c.id, `"${c.name}"`,
+        `"${c.code} Monthly Activity"`, "2025-04 (Apr 2025)", 1000, m.unit,
+        "default", "", "", "", m.unit, `"Meter / Invoice Ref"`
+      ];
+    });
+    const csv = "\uFEFF" + [headers].concat(sampleRows).map(r=>r.join(",")).join("\r\n");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `TulaCarbon_${normId(fac.id)}_Activity_Template.csv`;
+    a.click();
+  };
+
+  $("#uploadCsvInput").onchange = e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      const lines = String(ev.target.result).split(/\r?\n/).filter(Boolean);
+      let imported = 0, skipped = 0;
+      const allowedSet = new Set(enabledCats.map(x=>x.id));
+      for(let i=1; i<lines.length; i++){
+        const cols = lines[i].split(",").map(s=>s.replace(/^"|"$/g,"").trim());
+        if(cols.length < 8) continue;
+        const [, sc, catId, , actName, perMonth, qtyStr, actUnit, efTierRaw, densStr, ncvStr, suppEfStr, efUnitRaw, evSrc] = cols;
+        if(!allowedSet.has(catId)){ skipped++; continue; }
+        const qty = Number(qtyStr);
+        if(!qty || qty <= 0){ skipped++; continue; }
+
+        const tier = ["default","site_calc","supplier"].includes((efTierRaw||"").toLowerCase()) ? efTierRaw.toLowerCase() : "default";
+        const res = computeEffectiveEF(tier, catId, fac, {
+          density: densStr,
+          ncv: ncvStr,
+          supplierEf: suppEfStr,
+          supplierEfUnit: efUnitRaw || actUnit
+        });
+
+        const match = resolveUnitMatch(actUnit, res.unit);
+        if(match.status === "mismatch"){ skipped++; continue; }
+
+        const convertedQty = qty * match.factor;
+        t.entries.push({
+          id: "E-" + Date.now() + "_" + i,
+          facilityId: fac.id,
+          scope: sc || (catId.startsWith("S1")?"S1":catId.startsWith("S2")?"S2":"S3"),
+          catId,
+          method: curCat.method,
+          source: actName || "CSV Imported Activity",
+          period: perMonth || "2025-04 (Apr 2025)",
+          qty,
+          unit: actUnit,
+          efUnit: res.unit,
+          unitMatch: match.label,
+          ef: res.ef,
+          efTier: tier,
+          efSource: res.sourceTag,
+          mktEf: null,
+          tco2e: (convertedQty * res.ef)/1000,
+          mktTco2e: null,
+          enteredBy: submitterName,
+          notes: evSrc || "Bulk CSV Upload",
+          evidenceFile: { name: file.name, type: "text/csv", size: file.size, dataUrl: "" }
+        });
+        imported++;
+      }
+      save();
+      render();
+      toast(`Imported ${imported} records${skipped?` (${skipped} skipped due to unassigned category or unit mismatch)`:""}.`);
+    };
+    reader.readAsText(file);
+  };
+
+  $("#simUploadBtn").onclick = ()=>{
+    t.entries.push({
+      id: "E-SIM-" + Date.now(),
+      facilityId: fac.id,
+      scope: curCat.scope,
+      catId: curCat.id,
+      method: curCat.method,
+      source: `${curCat.code} Monthly Log (Bulk CSV)`,
+      period: "2025-05 (May 2025)",
+      qty: 2500,
+      unit: defMeta.unit,
+      efUnit: defMeta.unit,
+      unitMatch: `Exact Match (${defMeta.unit} = kgCO2e/${defMeta.unit})`,
+      ef: defMeta.ef,
+      efTier: "default",
+      efSource: "Default / Tula AI Suggested",
+      mktEf: isDualS2 ? 0.0 : null,
+      tco2e: (2500 * defMeta.ef)/1000,
+      mktTco2e: isDualS2 ? 0.0 : null,
+      enteredBy: submitterName,
+      notes: "Simulated bulk template upload",
+      evidenceFile: { name: `Bulk_Upload_${curCat.code.replace(/\s+/g,"_")}_May2025.csv`, type: "text/csv", size: 640, dataUrl: "" }
+    });
+    save();
+    render();
+    toast("Simulated CSV row imported into " + curCat.code + ".");
+  };
+}
+
+render();
+</script>
+</body>
+</html>

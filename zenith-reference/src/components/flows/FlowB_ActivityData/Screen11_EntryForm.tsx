@@ -1,0 +1,650 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { useApp } from '../../../context/AppContext';
+import {
+  CheckCircle,
+  ArrowRight,
+  Calculator,
+  Info,
+  ArrowLeft,
+  Upload,
+  FileText,
+  Trash2,
+  Sparkles,
+  Lock,
+  AlertTriangle,
+  ShieldAlert,
+  BookOpen,
+  Scale,
+} from 'lucide-react';
+import { PageHeader } from '../../common/PageHeader';
+import { StatusBadge } from '../../common/StatusBadge';
+
+export const Screen11_EntryForm: React.FC = () => {
+  const {
+    sites,
+    emissionSources,
+    activePeriod,
+    addActivityRecord,
+    navigateToScreen,
+    setSelectedRecordId,
+    showToast,
+    ocrPrefillData,
+    setOcrPrefillData,
+    currentRole,
+    currentUser,
+    openFactorHelper,
+    selectedHelperFactor,
+    setSelectedHelperFactor,
+  } = useApp();
+
+  const isPeriodLocked = Boolean(activePeriod?.locked);
+  const isVerifierReadOnly = currentRole === 'VERIFIER';
+
+  // Respect user's assigned siteScope if configured (e.g. A. Kumar assigned to Chennai)
+  const allowedSites = useMemo(() => {
+    if (currentUser?.siteScope && currentUser.siteScope.length > 0 && currentRole === 'DATA_ENTRY') {
+      const filtered = sites.filter((s) => currentUser.siteScope?.includes(s.id));
+      return filtered.length > 0 ? filtered : sites;
+    }
+    return sites;
+  }, [sites, currentUser, currentRole]);
+
+  // Find or default to Chennai Plant 1 or first allowed site
+  const defaultSite = allowedSites.find((s) => s.name.includes('Chennai')) || allowedSites[0] || sites[0];
+  const [siteId, setSiteId] = useState(ocrPrefillData?.siteId || defaultSite?.id || 'site-chennai-1');
+
+  const availableSources = emissionSources.filter((s) => s.siteId === siteId);
+  const defaultSource = availableSources.find((s) => s.name.toLowerCase().includes('grid') || s.name.toLowerCase().includes('electricity')) || availableSources[0];
+
+  const [sourceId, setSourceId] = useState(ocrPrefillData?.sourceId || defaultSource?.id || '');
+  const [date, setDate] = useState(ocrPrefillData?.date || '2025-08-12');
+  const [quantity, setQuantity] = useState<string>(ocrPrefillData?.quantity ? String(ocrPrefillData.quantity) : '48200');
+  const [unit, setUnit] = useState<string>(ocrPrefillData?.unit || 'kWh');
+  const [entryMethod, setEntryMethod] = useState<string>(ocrPrefillData?.entryMethod || 'Manual');
+  const [notes, setNotes] = useState(ocrPrefillData?.notes || '');
+  const [testedDensity, setTestedDensity] = useState<string>('0.84');
+
+  // Attached evidence in-line support
+  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; size: string; uploadDate: string }>>(
+    ocrPrefillData?.evidenceFile
+      ? [ocrPrefillData.evidenceFile]
+      : []
+  );
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Sync if prefill arrives
+  useEffect(() => {
+    if (ocrPrefillData) {
+      if (ocrPrefillData.siteId) setSiteId(ocrPrefillData.siteId);
+      if (ocrPrefillData.sourceId) setSourceId(ocrPrefillData.sourceId);
+      if (ocrPrefillData.date) setDate(ocrPrefillData.date);
+      if (ocrPrefillData.quantity) setQuantity(String(ocrPrefillData.quantity));
+      if (ocrPrefillData.unit) setUnit(ocrPrefillData.unit);
+      if (ocrPrefillData.entryMethod) setEntryMethod(ocrPrefillData.entryMethod);
+      if (ocrPrefillData.notes) setNotes(ocrPrefillData.notes);
+      if (ocrPrefillData.evidenceFile) {
+        setAttachedFiles([ocrPrefillData.evidenceFile]);
+      }
+    }
+  }, [ocrPrefillData]);
+
+  // Selected source object
+  const currentSource = availableSources.find((s) => s.id === sourceId) || availableSources[0] || defaultSource;
+  const selectedSite = sites.find((s) => s.id === siteId) || defaultSite;
+
+  const isLiquidFuel = useMemo(() => {
+    const srcName = (currentSource?.name || '').toLowerCase();
+    return srcName.includes('diesel') || srcName.includes('oil') || srcName.includes('petrol') || srcName.includes('hfo');
+  }, [currentSource]);
+
+  const isVolumeUnit = useMemo(() => {
+    const u = (unit || '').toLowerCase();
+    return u === 'l' || u === 'litre' || u === 'litres' || u === 'kl' || u === 'kilolitre' || u === 'm3';
+  }, [unit]);
+
+  const formulaApplied = useMemo(() => {
+    const srcName = (currentSource?.name || '').toLowerCase();
+    if (srcName.includes('electricity') || currentSource?.category === 'Scope 2') return 'C-06 (Scope 2 Grid)';
+    if (srcName.includes('vehicle') || srcName.includes('fleet') || srcName.includes('truck')) return 'C-03 (Mobile Combustion)';
+    if (srcName.includes('refrigerant') || srcName.includes('chiller') || srcName.includes('hfc')) return 'C-05 (Fugitive Refrigerants)';
+    if (srcName.includes('biomass') || srcName.includes('husk')) return 'C-02 (Biomass Segregated)';
+    return 'C-01 (Stationary Combustion)';
+  }, [currentSource]);
+
+  // Calculation computation with TC-DOM-002a density handling
+  const numQuantity = parseFloat(quantity) || 0;
+  const numDensity = parseFloat(testedDensity) || 0;
+  const factor = selectedHelperFactor
+    ? selectedHelperFactor.value
+    : (currentSource ? currentSource.emissionFactor : 0.82);
+  const factorUnit = selectedHelperFactor
+    ? selectedHelperFactor.unit
+    : (currentSource?.factorUnit || 'kg CO2e / kWh');
+  const factorSource = selectedHelperFactor
+    ? selectedHelperFactor.citation
+    : (currentSource?.factorSource || 'CEA CO2 Baseline Database v19 (India)');
+
+  // If liquid volume is provided and density is missing, block calculation per Sheet 10
+  const isDensityMissing = isLiquidFuel && isVolumeUnit && numDensity <= 0;
+  const effectiveMassOrEnergy = isLiquidFuel && isVolumeUnit
+    ? (unit.toLowerCase().includes('kl') || unit.toLowerCase().includes('m3') ? numQuantity * 1000 * numDensity : numQuantity * numDensity)
+    : numQuantity;
+
+  const emissions_tCO2e = isDensityMissing ? 0 : (numQuantity * factor) / 1000;
+
+  const handleSiteChange = (newSiteId: string) => {
+    setSiteId(newSiteId);
+    const newSources = emissionSources.filter((s) => s.siteId === newSiteId);
+    if (newSources.length > 0) {
+      setSourceId(newSources[0].id);
+      setUnit(newSources[0].unit || 'kWh');
+    }
+  };
+
+  const handleSimulatedFileUpload = () => {
+    const newDoc = {
+      name: 'electricity-bill-aug25.pdf',
+      size: '1.2 MB',
+      uploadDate: '12-Aug-2025',
+    };
+    setAttachedFiles((prev) => [...prev, newDoc]);
+    showToast('Evidence attached', 'electricity-bill-aug25.pdf uploaded successfully.');
+  };
+
+  const removeFile = (idx: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSave = (targetStatus: 'Draft' | 'Submitted') => {
+    if (isPeriodLocked) {
+      showToast('Period Locked', `Reporting Period ${activePeriod.name} is sealed and read-only. Entries cannot be created.`, 'error');
+      return;
+    }
+    if (isVerifierReadOnly) {
+      showToast('Auditor Read-Only', 'Independent verifiers cannot submit activity records.', 'error');
+      return;
+    }
+    if (!currentSource || numQuantity <= 0) {
+      showToast('Validation Error', 'Please enter a valid positive quantity.', 'error');
+      return;
+    }
+
+    const newRecord = addActivityRecord({
+      periodId: activePeriod.id,
+      siteId: selectedSite.id,
+      siteName: selectedSite.name,
+      sourceId: currentSource.id,
+      sourceName: currentSource.name,
+      scope: currentSource.category || 'Scope 2',
+      date,
+      quantity: numQuantity,
+      unit: unit || currentSource.unit,
+      emissionFactor: factor,
+      factorUnit: factorUnit,
+      factorSource: factorSource,
+      emissions_tCO2e,
+      status: targetStatus,
+      notes: notes || (entryMethod === 'AI Extracted' ? 'Extracted via OCR Review #8821. Human-confirmed.' : 'Manual entry'),
+      evidenceFiles: attachedFiles.map((f, i) => ({
+        id: `ev-${Date.now()}-${i}`,
+        name: f.name,
+        size: f.size,
+        uploadDate: f.uploadDate,
+        uploadedBy: `${currentUser.name} (${currentRole === 'DATA_ENTRY' ? 'Data Entry' : currentRole})`,
+        url: '#',
+      })),
+    });
+
+    setSelectedRecordId(newRecord.id);
+    if (ocrPrefillData) {
+      setOcrPrefillData(null);
+    }
+
+    showToast(
+      targetStatus === 'Draft' ? 'Draft Saved' : 'Submitted for Review',
+      `Record ${newRecord.id} has been ${targetStatus === 'Draft' ? 'saved to draft' : 'submitted to reviewer queue'}.`
+    );
+
+    navigateToScreen('10_activity_dashboard', 'FLOW_B');
+  };
+
+  return (
+    <div id="screen-11-container" className="max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Activity Data' },
+          { label: 'New Entry' },
+        ]}
+        title="New Activity Data Entry"
+        description="Enter operational activity measurements for GHG calculation and compliance evidence."
+        actions={
+          <div className="flex items-center space-x-2">
+            <button
+              id="btn-entry-factor-helper"
+              type="button"
+              onClick={() => openFactorHelper(currentSource?.name || '')}
+              className="px-3.5 py-2 text-xs font-semibold text-[#01153C] bg-[#EDF2FA] border border-[#DCE5F5] rounded-full hover:bg-[#DCE5F5] shadow-2xs inline-flex items-center space-x-1.5 transition-all"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-[#01153C]" />
+              <span>Factor Helper (IPCC / IEA)</span>
+            </button>
+
+            <button
+              id="back-to-activity-dashboard"
+              onClick={() => navigateToScreen('10_activity_dashboard', 'FLOW_B')}
+              className="enterprise-btn-secondary h-9 px-3 text-xs inline-flex items-center space-x-1.5 font-semibold"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Dashboard</span>
+            </button>
+          </div>
+        }
+      />
+
+      {/* Selected Factor Indicator Banner */}
+      {selectedHelperFactor && (
+        <div className="p-3.5 bg-[#EDF2FA] border border-[#DCE5F5] rounded-xl flex items-center justify-between text-xs text-[#01153C] shadow-2xs animate-in fade-in duration-150">
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <BookOpen className="w-4 h-4 text-[#01153C] shrink-0" />
+            <div className="min-w-0">
+              <span className="font-semibold">
+                Applied Authoritative Factor: {selectedHelperFactor.name} ({selectedHelperFactor.value} {selectedHelperFactor.unit})
+              </span>
+              <div className="text-[11px] text-[#5F6368] font-data truncate mt-0.5">
+                {selectedHelperFactor.citation}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedHelperFactor(null)}
+            className="text-[11px] text-[#5F6368] hover:text-[#ED2024] font-semibold underline shrink-0 ml-3"
+          >
+            Reset
+          </button>
+        </div>
+      )}
+
+      {/* Period Locked Governance Banner */}
+      {isPeriodLocked && (
+        <div className="p-4 bg-[#FEF1F1] border border-[#FED2D3] rounded-xl flex items-center space-x-3 text-xs text-[#ED2024] font-data shadow-2xs">
+          <Lock className="w-5 h-5 shrink-0 text-[#ED2024]" />
+          <div>
+            <strong className="font-semibold">Accounting Period {activePeriod.name} is Locked:</strong> New activity data entries and edits are strictly disabled. To record adjustments, submit to an open accounting period.
+          </div>
+        </div>
+      )}
+
+      {/* Verifier Read-Only Mode Banner */}
+      {isVerifierReadOnly && (
+        <div className="p-4 bg-[#01153C]/5 border border-[#01153C]/20 rounded-xl flex items-center space-x-3 text-xs text-[#01153C] font-data shadow-2xs">
+          <ShieldAlert className="w-5 h-5 shrink-0 text-[#01153C]" />
+          <div>
+            <strong className="font-semibold">Third-Party Assurance Mode:</strong> External Verifiers ({currentUser.name}) have read-only inspection access and cannot submit operational activity records.
+          </div>
+        </div>
+      )}
+
+      {/* AI Pre-fill Banner if coming from OCR Review */}
+      {entryMethod === 'AI Extracted' && (
+        <div className="p-3 bg-[#01153C]/10 border border-[#01153C]/20 rounded-xl flex items-center justify-between text-xs text-[#01153C] font-sans">
+          <div className="flex items-center space-x-2">
+            <Sparkles className="w-4 h-4 text-[#01153C] shrink-0" />
+            <span>
+              <strong>Pre-filled from Utility Bill OCR Review (#8821).</strong> Human-verified electricity consumption loaded.
+            </span>
+          </div>
+          <StatusBadge status="Approved" customLabel="OCR Confirmed" size="sm" />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
+        {/* Main Entry Details Form (2 Cols) */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="p-5 bg-white border border-[#E5E7EB] rounded-xl shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-[#F1F3F5]">
+              <h2 className="text-sm font-semibold text-[#17181A]">Entry Details</h2>
+              <span className="text-[11px] font-data text-[#5F6368] bg-[#FAFAFB] px-2.5 py-0.5 rounded-md border border-[#E5E7EB]">
+                Method: {entryMethod}
+              </span>
+            </div>
+
+            {/* Site & Emission Source */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#17181A] mb-1">
+                  Site <span className="text-[#ED2024]">*</span>
+                </label>
+                <select
+                  id="entry-site-select"
+                  disabled={isPeriodLocked || isVerifierReadOnly}
+                  value={siteId}
+                  onChange={(e) => handleSiteChange(e.target.value)}
+                  className="w-full px-4 py-2 text-xs border border-[#E5E7EB] rounded-full bg-white text-[#17181A] focus:outline-none focus:border-[#01153C] disabled:bg-[#F4F5F6] disabled:cursor-not-allowed"
+                >
+                  {allowedSites.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.location})
+                    </option>
+                  ))}
+                </select>
+                {currentUser?.siteScope && currentUser.siteScope.length > 0 && currentRole === 'DATA_ENTRY' && (
+                  <span className="text-[10px] text-[#5F6368] mt-1 block">
+                    Restricted to your assigned facility scope: {allowedSites.map((s) => s.name).join(', ')}
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#17181A] mb-1">
+                  Emission source <span className="text-[#ED2024]">*</span>
+                </label>
+                <select
+                  id="entry-source-select"
+                  value={sourceId}
+                  onChange={(e) => setSourceId(e.target.value)}
+                  className="w-full px-4 py-2 text-xs border border-[#E5E7EB] rounded-full bg-white text-[#17181A] focus:outline-none focus:border-[#01153C]"
+                >
+                  {availableSources.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.category})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Activity Date, Quantity, Unit */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#17181A] mb-1">
+                  Activity date <span className="text-[#ED2024]">*</span>
+                </label>
+                <input
+                  id="entry-date-input"
+                  type="date"
+                  required
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-lg text-[#17181A] focus:outline-none focus:border-[#01153C] bg-white font-data"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#17181A] mb-1">
+                  Quantity <span className="text-[#ED2024]">*</span>
+                </label>
+                <input
+                  id="entry-quantity-input"
+                  type="number"
+                  step="any"
+                  required
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="48,200"
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-lg font-data text-[#17181A] focus:outline-none focus:border-[#01153C] bg-white font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#17181A] mb-1">
+                  Unit <span className="text-[#ED2024]">*</span>
+                </label>
+                <input
+                  id="entry-unit-input"
+                  type="text"
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-lg font-data bg-[#FAFAFB] text-[#17181A] focus:outline-none font-medium"
+                />
+              </div>
+
+              {/* Lab-tested density field for liquid fuel volumes per Sheet 03 / Sheet 10 */}
+              {isLiquidFuel && isVolumeUnit && (
+                <div className="col-span-1 sm:col-span-3 p-3 bg-[#F8F9FB] border border-[#E5E7EB] rounded-lg space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <label className="font-semibold text-[#17181A] flex items-center gap-1.5">
+                      <Scale className="w-3.5 h-3.5 text-[#01153C]" />
+                      <span>Certified Liquid Density (kg / L) <span className="text-[#ED2024]">*</span></span>
+                    </label>
+                    <span className="text-[10px] text-[#5F6368] font-data">Sheet 03 Normalization Rule</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={testedDensity}
+                    onChange={(e) => setTestedDensity(e.target.value)}
+                    placeholder="0.84"
+                    className="w-full px-3 py-1.5 text-xs border border-[#E5E7EB] rounded-md font-mono bg-white text-[#17181A] focus:outline-none focus:border-[#01153C]"
+                  />
+                  <p className="text-[10px] text-[#5F6368] leading-tight">
+                    Required property: Do not assume default density. Lab test certificate reference required for audit assurance.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Entry Method Selector */}
+            <div>
+              <label className="block text-xs font-semibold text-[#17181A] mb-1">
+                Entry method
+              </label>
+              <div className="flex items-center space-x-3 text-xs">
+                <label className="flex items-center space-x-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="entryMethod"
+                    value="Manual"
+                    checked={entryMethod === 'Manual'}
+                    onChange={() => setEntryMethod('Manual')}
+                    className="text-[#01153C] focus:ring-[#01153C]"
+                  />
+                  <span>Manual</span>
+                </label>
+                <label className="flex items-center space-x-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="entryMethod"
+                    value="AI Extracted"
+                    checked={entryMethod === 'AI Extracted'}
+                    onChange={() => setEntryMethod('AI Extracted')}
+                    className="text-[#01153C] focus:ring-[#01153C]"
+                  />
+                  <span>AI Extracted</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-xs font-semibold text-[#17181A] mb-1">
+                Operational Notes / Reference
+              </label>
+              <textarea
+                id="entry-notes-textarea"
+                rows={2}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. EB Bill Ref #TANGEDCO-2025-08 for Substation A."
+                className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-lg text-[#17181A] focus:outline-none focus:border-[#01153C] bg-white font-sans"
+              />
+            </div>
+          </div>
+
+          {/* Evidence Upload Section */}
+          <div className="p-5 bg-white border border-[#E5E7EB] rounded-xl shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[#17181A]">Evidence Attachment</h2>
+              <button
+                type="button"
+                onClick={() => navigateToScreen('16_attach_evidence', 'FLOW_B')}
+                className="text-xs text-[#01153C] hover:underline flex items-center space-x-1 font-semibold"
+              >
+                <span>Open Evidence & Documents Repository</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Drag and drop area */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setIsDragOver(false); handleSimulatedFileUpload(); }}
+              onClick={handleSimulatedFileUpload}
+              className={`p-6 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors ${
+                isDragOver ? 'border-[#01153C] bg-[#01153C]/5' : 'border-[#E5E7EB] hover:border-[#01153C] bg-[#FAFAFB]'
+              }`}
+            >
+              <Upload className="w-6 h-6 text-[#8A8F98] mx-auto mb-2" />
+              <p className="text-xs text-[#17181A] font-semibold">
+                Drag & drop file, or click to attach evidence document
+              </p>
+              <p className="text-[11px] text-[#5F6368] mt-1 font-data">
+                Supports PDF, scanned invoice, image or spreadsheet (Max 10MB)
+              </p>
+            </div>
+
+            {/* Attached file list */}
+            {attachedFiles.length > 0 && (
+              <div className="space-y-2 pt-2">
+                <div className="text-[11px] font-semibold text-[#5F6368] uppercase tracking-wider font-data">
+                  Attached Documents ({attachedFiles.length})
+                </div>
+                {attachedFiles.map((file, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2.5 bg-[#FAFAFB] border border-[#E5E7EB] rounded-lg text-xs"
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <FileText className="w-4 h-4 text-[#01153C]" />
+                      <div>
+                        <div className="font-semibold text-[#17181A]">{file.name}</div>
+                        <div className="text-[10px] text-[#8A8F98] font-data">{file.size} · Uploaded {file.uploadDate}</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(idx)}
+                      className="p-1 text-[#8A8F98] hover:text-[#ED2024] transition-colors"
+                      title="Remove file"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Action CTAs */}
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-2">
+            <button
+              id="btn-save-as-draft"
+              type="button"
+              disabled={isPeriodLocked || isVerifierReadOnly}
+              onClick={() => handleSave('Draft')}
+              className="enterprise-btn-secondary h-9 px-5 text-xs font-semibold rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Save as Draft
+            </button>
+
+            <button
+              id="btn-submit-for-review"
+              type="button"
+              disabled={isPeriodLocked || isVerifierReadOnly}
+              onClick={() => handleSave('Submitted')}
+              className="enterprise-btn-primary h-9 px-6 text-xs font-semibold shadow-xs flex items-center justify-center space-x-1.5 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <CheckCircle className="w-3.5 h-3.5" />
+              <span>Submit for Review</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Live Calculation Preview Card (1 Col) */}
+        <div className="space-y-4">
+          <div className="p-5 bg-white border border-[#E5E7EB] rounded-xl shadow-2xs space-y-4">
+            <div className="flex items-center space-x-2 text-[#01153C]">
+              <Calculator className="w-4 h-4" />
+              <h3 className="text-sm font-semibold text-[#17181A]">Calculation Preview</h3>
+            </div>
+
+            <div className="p-3 bg-[#FAFAFB] rounded-xl border border-[#E5E7EB] space-y-2 text-xs font-data">
+              <div className="flex justify-between text-[#5F6368]">
+                <span>Activity Quantity:</span>
+                <span className="text-[#17181A] font-semibold">
+                  {numQuantity.toLocaleString()} {unit}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-[#5F6368]">
+                <span>Emission Factor:</span>
+                <span className="text-[#17181A] font-semibold emission-factor">
+                  {factor} {currentSource?.factorUnit || 'kg CO2e / kWh'}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-[#5F6368]">
+                <span>Calculation Logic:</span>
+                <span className="font-semibold text-[#01153C] font-mono">
+                  {formulaApplied}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-[#5F6368]">
+                <span>Factor Precedence:</span>
+                <span className="font-semibold text-[#0F6B48]">
+                  {factorSource.includes('CEA')
+                    ? 'Tier 2 (National Baseline)'
+                    : selectedHelperFactor?.citation?.includes('SGS') || selectedHelperFactor?.citation?.includes('Lab')
+                    ? 'Tier 3 (Site Lab Analysis)'
+                    : 'Tier 1 (IPCC Default)'}
+                </span>
+              </div>
+
+              {isDensityMissing ? (
+                <div className="p-2 bg-[#FEF1F1] border border-[#ED2024]/30 rounded-lg text-[11px] text-[#ED2024] font-semibold flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Blocked: Missing density for liquid fuel volume (Sheet 10 Rule).</span>
+                </div>
+              ) : (
+                <div className="pt-2 border-t border-[#E5E7EB] flex justify-between items-baseline">
+                  <span className="font-sans text-xs text-[#5F6368]">Computed Emissions:</span>
+                  <span className="text-base font-bold text-[#01153C]">
+                    {emissions_tCO2e.toFixed(3)} tCO2e
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="text-[11px] text-[#5F6368] space-y-1">
+              <div className="font-semibold text-[#17181A]">Emission Factor Authority:</div>
+              <div className="font-data">{factorSource}</div>
+              <div className="text-[#5F6368] font-data text-[11px] pt-1 formula-text">
+                Formula: (Activity × EF) ÷ 1,000 = tCO2e · Multi-gas GWP100 AR5
+              </div>
+            </div>
+
+            <button
+              id="btn-lookup-factor-card"
+              type="button"
+              onClick={() => openFactorHelper(currentSource?.name || '')}
+              className="w-full mt-2 py-2 px-3 bg-[#EDF2FA] text-[#01153C] rounded-xl text-xs font-semibold hover:bg-[#DCE5F5] transition-colors flex items-center justify-center space-x-1.5 border border-[#DCE5F5]"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Look up IPCC / IEA Factors</span>
+            </button>
+          </div>
+
+          <div className="p-4 bg-white border border-[#E5E7EB] rounded-xl text-xs text-[#5F6368] flex items-start space-x-2 shadow-2xs font-sans">
+            <Info className="w-4 h-4 text-[#01153C] shrink-0 mt-0.5" />
+            <span className="font-data">
+              All activity entries require supporting evidence (PDF invoices, meter logs) to assure audit readiness and pass independent verifier inspection.
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

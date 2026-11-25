@@ -1,0 +1,17 @@
+/* Sign-in steps: login, two-step verification, organisation picker, forced password change */
+body:has(.page--narrow) { min-height: 100vh; }
+body:has(.page--narrow)::before { content: ''; position: fixed; inset: 0; z-index: -1; background: var(--app-bg); pointer-events: none; }
+.page--narrow { display: flex; flex-direction: column; justify-content: center; max-width: 440px; min-height: 100vh; }
+.page--narrow::before {
+  content: ''; display: block; height: 40px; margin-bottom: var(--space-5);
+  background: url('/Assets/Logos/Logo.png') no-repeat center / 250px auto;
+}
+.page--narrow .page__header { text-align: center; }
+.page--narrow .page__title { font-size: 1.5rem; }
+.page--narrow .card { box-shadow: 0 10px 30px rgb(22 22 31 / 0.06); }
+
+/* Quick sign-in buttons for the showcase accounts */
+.quick-login { --card-pad: var(--space-4); }
+.quick-login--demo { background: var(--color-primary-soft); border-color: var(--color-primary-border); box-shadow: none; }
+.quick-login__label { color: var(--color-muted); font-size: var(--text-sm); }
+.quick-login > * + * { margin-top: var(--space-3); }

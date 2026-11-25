@@ -1,0 +1,32 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Space for the scrollbar is always kept, so short and long pages line up and nothing shifts sideways. */
+html { scrollbar-gutter: stable; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Spacing comes from the layout flow rules, never from element defaults. */
+h1, h2, h3, h4, p, ul, ol, dl, dd, figure, blockquote { margin: 0; }
+h1, h2, h3, h4 { letter-spacing: -0.01em; font-weight: 600; }
+a { color: inherit; }
+img, svg { max-width: 100%; }
+button { font: inherit; }
+::selection { background: var(--color-primary-soft); }
+
+/* Slim scrollbars in the brand tones (page, sidebar, tables) */
+* { scrollbar-width: thin; scrollbar-color: #cfc6f5 transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d6cff3; border: 2px solid transparent; border-radius: 999px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #b9acf0; background-clip: padding-box; }
+
+/* Figures line up in every column (tabular figures). */
+body { font-variant-numeric: tabular-nums; }

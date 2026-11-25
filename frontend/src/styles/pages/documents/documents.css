@@ -1,0 +1,33 @@
+/* Upload area: the file input fills it, so clicking and dropping both work natively. */
+.dropzone {
+  position: relative; display: grid; justify-items: center; gap: var(--space-1); padding: var(--space-5);
+  border: 2px dashed var(--color-primary-border); border-radius: var(--radius-lg); background: var(--color-surface);
+  text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+}
+.dropzone:hover, .dropzone:focus-within { border-color: var(--color-primary); background: var(--color-primary-soft); }
+.dropzone__input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.dropzone__icon { display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: var(--space-1); border-radius: 12px; background: var(--color-primary-soft); color: var(--color-primary); }
+.dropzone__title { font-weight: 600; }
+
+/* List on the left, the selected document on the right */
+.documents { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); align-items: start; gap: var(--space-5); }
+@media (max-width: 1100px) { .documents { grid-template-columns: 1fr; } }
+
+.doc-row { align-items: center; }
+.doc-row__main { display: grid; gap: 2px; min-width: 0; }
+.doc-row__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-detail__title { min-width: 0; overflow-wrap: anywhere; }
+.doc-spin { animation: doc-spin 1.2s linear infinite; }
+@keyframes doc-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .doc-spin { animation: none; } }
+
+/* Document type picker and correction history in the detail panel */
+.doc-type { max-width: 320px; }
+.doc-history summary { cursor: pointer; }
+.doc-history[open] summary { margin-bottom: var(--space-3); }
+
+/* The original document beside the values on the entry form */
+.doc-preview summary { cursor: pointer; }
+.doc-preview[open] summary { margin-bottom: var(--space-3); }
+.doc-preview__frame { display: block; width: 100%; height: 560px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-2); object-fit: contain; }
+@media (max-width: 640px) { .doc-preview__frame { height: 420px; } }

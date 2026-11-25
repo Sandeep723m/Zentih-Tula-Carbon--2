@@ -1,0 +1,33 @@
+/* Category tiles under "What will be calculated" */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-3); }
+.tile {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: var(--space-1) var(--space-3);
+  padding: 14px var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-surface); color: var(--color-text); font: inherit; text-align: left; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tile:hover { border-color: var(--color-primary-border); }
+.tile[aria-pressed='true'] { background: var(--color-primary-soft); border-color: var(--color-primary-border); box-shadow: 0 0 0 1px var(--color-primary-border); }
+.tile__icon { grid-row: span 2; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-sm); background: var(--color-primary-soft); color: var(--color-primary); }
+.tile[aria-pressed='true'] .tile__icon { background: var(--color-primary); color: #fff; }
+.tile__name { font-size: var(--text-md); font-weight: 600; }
+.tile__how { grid-column: 2 / 4; color: var(--color-muted); font-size: var(--text-sm); }
+.tile .badge { justify-self: end; }
+
+.calc-estimate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+/* Warning detail inside a result row */
+.check-cell summary { cursor: pointer; }
+.check-cell[open] > * + * { margin-top: var(--space-1); }
+.toggle-details summary { cursor: pointer; }
+
+/* Result status inline block */
+.calc-result { display: grid; gap: var(--space-1); max-width: 380px; }
+.calc-result .badge { justify-self: start; }
+
+.link-plain { padding: 0; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
+
+/* Comparing two runs, under the runs table */
+.compare { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-border); }
+.compare summary { cursor: pointer; }
+.compare[open] > * + * { margin-top: var(--space-3); }

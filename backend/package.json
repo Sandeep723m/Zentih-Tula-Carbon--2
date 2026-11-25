@@ -1,0 +1,46 @@
+{
+  "name": "tula-carbon-backend",
+  "version": "1.0.0",
+  "main": "dist/src/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/src/server.js",
+    "test": "tsx --import ./tests/setup.ts --test --test-concurrency=1 tests/*.test.ts",
+    "postinstall": "node scripts/mysql-schema.mjs && prisma generate",
+    "prisma:generate": "node scripts/mysql-schema.mjs && prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "mysql:setup": "node scripts/mysql-schema.mjs && prisma generate && prisma db push && node scripts/mysql-audit-trigger.mjs",
+    "platform:bootstrap": "tsx scripts/bootstrap-super-admin.ts",
+    "platform:bootstrap:prod": "node dist/scripts/bootstrap-super-admin.js",
+    "zenith:seed": "tsx scripts/zenith-test-seed.ts",
+    "zenith:seed:prod": "node dist/scripts/zenith-test-seed.js",
+    "data:export": "tsx scripts/data-export.ts",
+    "data:import": "tsx scripts/data-import.ts",
+    "data:import:prod": "node dist/scripts/data-import.js",
+    "reference:seed": "tsx scripts/reference-seed.ts",
+    "reference:seed:prod": "node dist/scripts/reference-seed.js",
+    "factor:audit": "tsx scripts/factor-audit.ts",
+    "factor:audit:prod": "node dist/scripts/factor-audit.js",
+    "typecheck": "tsc -p tsconfig.check.json"
+  },
+  "type": "module",
+  "dependencies": {
+    "@prisma/adapter-mariadb": "7.10.1",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "mariadb": "3.5.4",
+    "prisma": "7.10.1",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "typescript": "^6.0.3"
+  },
+  "private": true
+}

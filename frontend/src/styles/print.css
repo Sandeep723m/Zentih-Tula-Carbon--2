@@ -1,0 +1,13 @@
+/* Reports print as the report alone (browser "Save as PDF"). */
+@media print {
+  .topbar, .sidebar, .crumbs, .no-print, .banner { display: none !important; }
+  .app { display: block; background: none; }
+  .main { padding: 0; }
+  .card { border: none; box-shadow: none; }
+  .no-print-link { color: inherit; text-decoration: none; }
+  .report h3 { break-after: avoid; }
+  .report tr { break-inside: avoid; }
+  .tabs { display: none; }
+  [data-tabpanel][hidden] { display: block !important; }
+  [data-tabpanel] { break-before: auto; }
+}

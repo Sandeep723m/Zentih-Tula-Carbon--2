@@ -1,0 +1,102 @@
+/* Main dashboard grid: wide card + narrow card per row */
+.an-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-5); }
+@media (max-width: 1180px) { .an-grid { grid-template-columns: 1fr; } }
+
+/* Soft tinted card that holds white inner tiles */
+.an-card { display: flex; flex-direction: column; gap: var(--space-5); background: linear-gradient(180deg, #fbfbfe 0%, #f3f4f9 100%); }
+.an-card > * + * { margin-top: 0; }
+.an-card__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.an-card__heading { flex: 1 1 200px; min-width: 0; }
+.an-card__head .input { width: auto; }
+.an-card__titleline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.an-card__title { font-size: var(--text-xl); }
+.an-card__sub { margin-top: 2px; color: var(--color-muted); font-size: var(--text-sm); }
+
+/* White inner surfaces */
+.an-row, .an-tile, .an-emitter, .an-chip, .an-pill {
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm);
+}
+
+/* ---- Total emissions ---- */
+.an-total { display: grid; grid-template-columns: minmax(200px, 2fr) minmax(0, 3fr); align-items: start; gap: var(--space-5); }
+@media (max-width: 720px) { .an-total { grid-template-columns: 1fr; } }
+.an-total__donut { display: grid; justify-items: center; gap: var(--space-4); }
+.an-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+.an-legend__item {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-surface);
+  color: var(--color-text-2); font-size: var(--text-xs);
+}
+.an-dot { display: inline-block; flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--chart-primary); }
+.an-dot[data-color='SCOPE1'] { background: var(--series-1); }
+.an-dot[data-color='SCOPE2_LOCATION'], .an-dot[data-color='SCOPE2_MARKET'] { background: var(--series-2); }
+.an-dot[data-color='SCOPE2_HEAT'] { background: var(--series-3); }
+.an-dot[data-color='REDUCTION'] { background: var(--color-success); }
+
+.an-rows { display: grid; gap: var(--space-3); }
+.an-row { display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4); }
+.an-row__top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); font-size: var(--text-sm); }
+.an-row__value { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+.an-row__note { color: var(--color-muted); font-size: var(--text-xs); }
+
+/* Thin rounded progress bars, coloured per scope */
+.an-bar { width: 100%; height: 6px; border: 0; border-radius: var(--radius-pill); background: var(--chart-track); overflow: hidden; appearance: none; }
+.an-bar::-webkit-progress-bar { background: var(--chart-track); border-radius: var(--radius-pill); }
+.an-bar::-webkit-progress-value { border-radius: var(--radius-pill); background: var(--bar, var(--chart-primary)); }
+.an-bar::-moz-progress-bar { border-radius: var(--radius-pill); background: var(--bar, var(--chart-primary)); }
+.an-bar--scope1 { --bar: var(--series-1); }
+.an-bar--scope2_location, .an-bar--scope2_market { --bar: var(--series-2); }
+.an-bar--scope2_heat { --bar: var(--series-3); }
+.an-bar--primary { --bar: var(--chart-primary); }
+
+.an-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-3); }
+.an-tile { display: grid; justify-items: start; gap: var(--space-1); padding: var(--space-3) var(--space-4); }
+.an-tile__label { color: var(--color-muted); font-size: var(--text-xs); }
+.an-tile__value { font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
+.an-tile__hint { color: var(--color-subtle); font-size: var(--text-xs); }
+
+/* ---- Scope 2 electricity ---- */
+.an-pill { justify-self: center; align-self: center; padding: 4px var(--space-3); border-radius: var(--radius-pill); color: var(--color-text-2); font-size: var(--text-xs); text-align: center; }
+.an-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin-top: auto; padding-top: var(--space-4); border-top: 1px solid var(--color-border); }
+.an-chip { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-pill); font-size: var(--text-sm); }
+.an-chip strong { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* ---- Top emitters ---- */
+.an-emitters { display: grid; gap: var(--space-3); padding: 0; list-style: none; }
+.an-emitter { display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4); }
+.an-emitter__top { display: flex; align-items: center; gap: var(--space-3); }
+.an-rank { padding: 1px var(--space-2); border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-muted); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.an-emitter__name { flex: 1; min-width: 0; overflow: hidden; font-size: var(--text-sm); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.an-emitter__value { font-variant-numeric: tabular-nums; }
+.an-emitter__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+
+/* ---- Year-on-year comparison ---- */
+.yoy { display: grid; gap: var(--space-2); }
+.yoy-row {
+  display: grid; grid-template-columns: minmax(180px, 1.1fr) minmax(220px, 2fr) minmax(130px, auto); align-items: center; gap: var(--space-4);
+  padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface);
+}
+.yoy-row--total { border-color: var(--color-primary-border); background: #fbfaff; }
+.yoy-row--total .yoy-row__label { font-weight: 600; }
+.yoy-row__label { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
+.yoy-row__bars { display: grid; gap: 6px; }
+.yoy-bar { display: grid; grid-template-columns: 1fr 90px; align-items: center; gap: var(--space-3); }
+.yoy-bar span { color: var(--color-muted); font-size: var(--text-xs); font-variant-numeric: tabular-nums; text-align: right; }
+.yoy-row__change { display: grid; justify-items: end; gap: 4px; font-variant-numeric: tabular-nums; }
+.an-bar--prev { --bar: #c9c3e3; }
+.an-bar--total { --bar: var(--chart-primary); }
+.an-dot[data-color='TOTAL'] { background: var(--chart-primary); }
+.yoy-legend { display: flex; gap: var(--space-4); color: var(--color-muted); font-size: var(--text-xs); }
+.yoy-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.yoy-key { display: inline-block; width: 14px; height: 6px; border-radius: 3px; background: var(--chart-primary); }
+.yoy-key--prev { background: #c9c3e3; }
+@media (max-width: 760px) {
+  .yoy-row { grid-template-columns: 1fr; }
+  .yoy-row__change { justify-items: start; grid-auto-flow: column; justify-content: start; }
+}
+
+/* Carbon Intelligence: one recommendation per row, and the percent input in the simulator */
+.insight { display: grid; gap: var(--space-1); padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); }
+.insight:last-child { border-bottom: 0; }
+.insight__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.simulate__percent { width: 96px; }

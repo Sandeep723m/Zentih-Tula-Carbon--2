@@ -1,0 +1,35 @@
+/* Progress steps shown as tiles (calculation workflow, record lifecycle) */
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; padding: 0; list-style: none; }
+.step {
+  position: relative; display: flex; flex-direction: column; gap: 2px;
+  padding: var(--space-3) 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-surface-2); color: var(--color-muted); font-size: var(--text-sm); font-weight: 500;
+}
+.step__n { color: var(--color-subtle); font-size: var(--text-xs); font-weight: 500; }
+.step__check { position: absolute; top: 10px; right: 10px; color: var(--color-success); }
+.step--done { background: var(--color-surface); color: var(--color-text); }
+.step--current { background: var(--color-primary-soft); border-color: var(--color-primary-border); color: var(--color-primary); font-weight: 600; }
+.step--current .step__n { color: var(--color-primary); }
+.step--problem { background: var(--color-error-soft); border-color: var(--color-error-border); color: var(--color-error); font-weight: 600; }
+
+/* Clickable wizard steps (boundary setup) */
+.stepper { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); padding: 0; list-style: none; }
+.stepper__button {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%;
+  padding: 10px var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 0.55); color: inherit; text-align: left; cursor: pointer;
+}
+.stepper__button:disabled { opacity: 0.5; cursor: not-allowed; }
+.stepper__button[aria-current='step'] { background: var(--color-surface); border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
+.stepper__num {
+  display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px;
+  border: 2px solid var(--color-border); border-radius: 50%; background: #fff; font-size: var(--text-sm); font-weight: 700;
+}
+.stepper__button--done .stepper__num { background: var(--color-primary-soft); border-color: var(--color-primary); color: var(--color-primary-hover); }
+.stepper__button[aria-current='step'] .stepper__num { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.stepper__title { display: block; font-weight: 600; }
+.stepper__sub { display: block; color: var(--color-muted); font-size: var(--text-sm); }
+
+@media (max-width: 720px) {
+  .stepper { grid-template-columns: 1fr; }
+}

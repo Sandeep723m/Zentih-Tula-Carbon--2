@@ -1,0 +1,19 @@
+/* Zenith sandbox quick-switch: an invisible hotspot in the extreme top-right corner.
+   The dot only appears when the cursor is in that corner (or the panel is open). */
+.test-switch { position: fixed; top: 0; right: 0; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; }
+.test-switch__dot {
+  width: 12px; height: 12px; margin: 8px 8px 0 0; padding: 0; border: 0; border-radius: 50%;
+  background: var(--color-primary, #7c6cf0); cursor: pointer; opacity: 0; transition: opacity 0.15s;
+}
+.test-switch:hover .test-switch__dot, .test-switch--open .test-switch__dot { opacity: 1; }
+.test-switch__panel {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-3); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: 10px 0 0 10px; box-shadow: var(--shadow-md);
+}
+.test-switch__role {
+  padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: 8px;
+  background: var(--color-bg); color: var(--color-text); cursor: pointer; font-size: var(--text-sm); white-space: nowrap;
+}
+.test-switch__role:hover:not(:disabled) { background: var(--color-primary-soft); border-color: var(--color-primary-border); }
+.test-switch__role:disabled { opacity: 0.5; cursor: default; }

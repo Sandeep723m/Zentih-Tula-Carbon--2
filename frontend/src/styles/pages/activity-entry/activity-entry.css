@@ -1,0 +1,13 @@
+/* The form's fieldset only groups inputs for disabling; it adds no box of its own. */
+.entry-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+
+/* Save / submit bar stays in view while the form scrolls */
+.sticky-actions { position: sticky; z-index: 2; bottom: 0; padding: var(--space-4) 0 var(--space-1); border-top: 1px solid var(--color-border); background: var(--color-surface); }
+
+.evidence { display: grid; gap: var(--space-2); }
+
+.summary__wide { grid-column: 1 / -1; }
+.summary__text { font-weight: 400; }
+
+.todo--block { display: block; }
+.todo--block > * + * { margin-top: var(--space-1); }

@@ -1,0 +1,5 @@
+/* Inside each report tab: a heading, its table, then its note, with room before the next heading. */
+.report [data-tabpanel] > * + *,
+.report [data-tabpanel] > div > * + * { margin-top: var(--space-3); }
+.report [data-tabpanel] h3 { font-size: var(--text-lg); }
+.report [data-tabpanel] * + h3 { margin-top: var(--space-6); }

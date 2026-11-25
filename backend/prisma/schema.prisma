@@ -1,0 +1,1144 @@
+// Tula Carbon application schema.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  TENANT_ADMIN
+  DATA_ENTRY
+  REVIEWER
+  VERIFIER
+}
+
+// Platform-level role, separate from per-organisation roles (Membership.role).
+enum PlatformRole {
+  SUPER_ADMIN
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED // platform suspension: members cannot open the organisation; all data is kept
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  CANCELLED
+}
+
+enum PeriodStatus {
+  OPEN
+  LOCKED
+}
+
+enum BoundaryApproach {
+  EQUITY // count emissions in proportion to ownership share
+  OPERATIONAL // count 100% where we set operating policies, 0% otherwise
+  FINANCIAL // count 100% where we direct financial and operating policies, 0% otherwise
+}
+
+enum BoundaryStatus {
+  DRAFT
+  APPROVED
+}
+
+// What kind of activity a source produces. Scope follows from the category
+// (see emissionSources.controller.ts), so it is not stored separately.
+enum SourceCategory {
+  FUEL_COMBUSTION // Scope 1
+  FUGITIVE_GAS // Scope 1
+  PURCHASED_ELECTRICITY // Scope 2
+  PURCHASED_ENERGY // Scope 2: heat, steam, cooling
+  PROCESS // Scope 1: industrial process and on-site waste treatment (C-04)
+  REMOVAL // recovered CO2, reported as a separate line and never netted (C-08)
+}
+
+// GHG category a source reports under. Derived from SourceCategory + activity type (ghgCategoryOf);
+// null on a source while ambiguous until a Tenant Admin confirms it. REMOVALS is outside Scope 1 and 2.
+enum GhgCategory {
+  S1_STATIONARY
+  S1_MOBILE
+  S1_FUGITIVE
+  S1_PROCESS
+  S2_ELECTRICITY
+  S2_HEAT_STEAM_COOLING
+  REMOVALS
+}
+
+enum AssignmentLevel {
+  ORGANISATION
+  SITE
+  FACILITY
+}
+
+enum AssignmentScope {
+  S1
+  S2
+  REMOVALS
+}
+
+enum AssignmentStatus {
+  PROPOSED // suggested from history; grants nothing until confirmed
+  ACTIVE
+  REVOKED
+}
+
+// How a calculation result's site was known. LEGACY_UNKNOWN only ever comes from the column default
+// on rows that existed before site tracking; the engine writes RECORDED or UNASSIGNED.
+enum SiteAttribution {
+  RECORDED
+  UNASSIGNED
+  LEGACY_UNKNOWN
+}
+
+model Organization {
+  id                      String                @id @default(uuid())
+  name                    String
+  status                  OrganizationStatus    @default(ACTIVE)
+  statusReason            String?
+  legalName               String?
+  country                 String?
+  industry                String?
+  address                 String?
+  // Boundary
+  baseYear                Int? // reference year for emissions comparisons
+  // Tenant settings
+  timezone                String                @default("UTC")
+  fiscalYearStartMonth    Int                   @default(1) // 1 = January
+  requireEvidenceOnSubmit Boolean               @default(false)
+  qualityAnomalyPercent   Int                   @default(50) // a month this far above or below its usual level is flagged
+  qualityMinHistory       Int                   @default(3) // months of history needed before a month is compared
+  // Data Entry assignments are enforced only after the Tenant Admin confirms them (per organisation)
+  assignmentsEnforced     Boolean               @default(false)
+  assignmentsEnforcedAt   DateTime?
+  assignmentsEnforcedById String?
+  gridFromSnapshot        Boolean               @default(false) // Scope 2 grid from the approved boundary snapshot; off until verified
+  createdAt               DateTime              @default(now())
+  assignmentsEnforcedBy   User?                 @relation("assignmentsEnforcedBy", fields: [assignmentsEnforcedById], references: [id], onDelete: Restrict)
+  sites                   Site[]
+  facilitySiteHistory     FacilitySiteHistory[]
+  dataEntryAssignments    DataEntryAssignment[]
+  memberships             Membership[]
+  auditLogs               AuditLog[]
+  facilities              Facility[]
+  reportingPeriods        ReportingPeriod[]
+  emissionSources         EmissionSource[]
+  activityRecords         ActivityRecord[]
+  evidence                Evidence[]
+  subscription            Subscription?
+  subscriptionEvents      SubscriptionEvent[]
+  boundaries              OrgBoundary[]
+  calculationRuns         CalculationRun[]
+  calculationResults      CalculationResult[]
+  activityReviews         ActivityReview[]
+  periodLockEvents        PeriodLockEvent[]
+  verifierGrants          VerifierGrant[]
+  verificationQueries     VerificationQuery[]
+  intakeDocuments         IntakeDocument[]
+  aiUsageEvents           AiUsageEvent[]
+  privateFactors          EmissionFactor[]
+  fuelProperties          FuelProperty[]
+  unitRequests            UnitRequest[]
+}
+
+model Facility {
+  id                   String                @id @default(uuid())
+  organizationId       String
+  name                 String
+  code                 String // short identifier, unique within the organisation
+  country              String?
+  city                 String?
+  address              String?
+  // Boundary fields (set during Super Admin boundary setup)
+  gridLocation         String? // electricity grid for Scope 2, e.g. "India - Southern Grid"
+  equityShare          Decimal?              @db.Decimal(5, 2) // 0–100; used when approach = EQUITY
+  operationalControl   Boolean? // used when approach = OPERATIONAL
+  financialControl     Boolean? // used when approach = FINANCIAL
+  scope1Active         Boolean               @default(true) // Scope 1 applies to this facility
+  scope2Active         Boolean               @default(true) // Scope 2 applies to this facility
+  isActive             Boolean               @default(true) // deactivated instead of deleted: later records reference it
+  siteId               String? // current placement only (mirrors the open FacilitySiteHistory row); history decides by date
+  createdAt            DateTime              @default(now())
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site                 Site?                 @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  siteHistory          FacilitySiteHistory[]
+  dataEntryAssignments DataEntryAssignment[]
+  emissionSources      EmissionSource[]
+  activityRecords      ActivityRecord[]
+  calculationResults   CalculationResult[]
+  fuelProperties       FuelProperty[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, siteId])
+}
+
+// A site groups facilities within an organisation. Deactivated, never deleted.
+model Site {
+  id                   String                @id @default(uuid())
+  organizationId       String
+  code                 String                @db.VarChar(20) // unique within the organisation
+  name                 String                @db.VarChar(120)
+  country              String?
+  isActive             Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  facilities           Facility[]
+  history              FacilitySiteHistory[]
+  dataEntryAssignments DataEntryAssignment[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, isActive])
+}
+
+// Effective-dated placement of a facility in a site. Rows are never deleted; a move closes the open row
+// and opens a new one. openKey = facilityId while open, null once closed: a unique index allows exactly
+// one open row per facility on both PostgreSQL and MySQL. validTo >= validFrom is a CHECK (migration SQL).
+model FacilitySiteHistory {
+  id             String       @id @default(uuid())
+  organizationId String
+  facilityId     String
+  siteId         String
+  validFrom      DateTime     @db.Date
+  validTo        DateTime?    @db.Date // inclusive; null = current placement
+  openKey        String?      @unique
+  reason         String       @db.VarChar(500)
+  createdById    String
+  createdAt      DateTime     @default(now())
+  closedById     String?
+  closedAt       DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  facility       Facility     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  site           Site         @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  createdBy      User         @relation("siteHistoryCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  closedBy       User?        @relation("siteHistoryClosedBy", fields: [closedById], references: [id], onDelete: Restrict)
+
+  @@index([facilityId, validFrom])
+  @@index([organizationId])
+}
+
+// What a Data Entry user may enter. Only ACTIVE rows grant access, and only once the organisation
+// switches enforcement on. Level SITE needs siteId, FACILITY needs facilityId, ORGANISATION neither
+// (validated in the service). scope null = Scope 1 + 2, never removals.
+model DataEntryAssignment {
+  id             String           @id @default(uuid())
+  organizationId String
+  userId         String
+  level          AssignmentLevel
+  siteId         String?
+  facilityId     String?
+  scope          AssignmentScope?
+  ghgCategory    GhgCategory?
+  status         AssignmentStatus
+  createdById    String
+  createdAt      DateTime         @default(now())
+  confirmedById  String?
+  confirmedAt    DateTime?
+  revokedById    String?
+  revokedAt      DateTime?
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation("assignmentUser", fields: [userId], references: [id], onDelete: Cascade)
+  site           Site?            @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  facility       Facility?        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  createdBy      User             @relation("assignmentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  confirmedBy    User?            @relation("assignmentConfirmedBy", fields: [confirmedById], references: [id], onDelete: Restrict)
+  revokedBy      User?            @relation("assignmentRevokedBy", fields: [revokedById], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, userId, status])
+  @@index([facilityId])
+  @@index([siteId])
+}
+
+model ReportingPeriod {
+  id              String              @id @default(uuid())
+  organizationId  String
+  name            String
+  startDate       DateTime            @db.Date
+  endDate         DateTime            @db.Date // inclusive
+  status          PeriodStatus        @default(OPEN)
+  lockedAt        DateTime?
+  lockedById      String?
+  finalRunId      String? // the calculation run the period was locked on; its results are the final figures
+  createdAt       DateTime            @default(now())
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  activityRecords ActivityRecord[]
+  calculationRuns CalculationRun[]
+  lockEvents      PeriodLockEvent[]
+  verifierGrants  VerifierGrant[]
+  queries         VerificationQuery[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, startDate])
+}
+
+model EmissionSource {
+  id                       String           @id @default(uuid())
+  organizationId           String
+  facilityId               String
+  name                     String
+  category                 SourceCategory
+  material                 String? // free-text description, e.g. "HSD from IOCL"
+  activityCode             String? // workbook tab 02 activity (fuel, gas, grid) the engine calculates it as
+  defaultUnit              String?
+  ghgCategory              GhgCategory? // from ghgCategoryOf; null while ambiguous
+  ghgCategoryConfirmedById String?
+  ghgCategoryConfirmedAt   DateTime?
+  isActive                 Boolean          @default(true)
+  createdAt                DateTime         @default(now())
+  organization             Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ghgCategoryConfirmedBy   User?            @relation("ghgCategoryConfirmedBy", fields: [ghgCategoryConfirmedById], references: [id], onDelete: Restrict)
+  facility                 Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  activityType             ActivityType?    @relation(fields: [activityCode], references: [code], onDelete: Restrict)
+  activityRecords          ActivityRecord[]
+
+  @@unique([facilityId, name])
+  @@index([organizationId])
+}
+
+model User {
+  id                      String                     @id @default(uuid())
+  email                   String                     @unique // stored lower-cased
+  name                    String
+  passwordHash            String
+  mustChangePassword      Boolean                    @default(false) // set for bootstrap and one-time passwords
+  platformRole            PlatformRole? // platform-level role; tenant roles live on Membership
+  isActive                Boolean                    @default(true)
+  mfaSecret               String? // base32 TOTP secret
+  mfaEnabled              Boolean                    @default(false)
+  mfaLastStep             Int? // last accepted TOTP step, blocks code replay
+  failedLoginCount        Int                        @default(0)
+  lockedUntil             DateTime?
+  createdAt               DateTime                   @default(now())
+  memberships             Membership[]
+  sessions                Session[]
+  createdRecords          ActivityRecord[]           @relation("createdBy")
+  updatedRecords          ActivityRecord[]           @relation("updatedBy")
+  uploads                 Evidence[]
+  approvedBoundaries      OrgBoundary[]
+  createdFactors          EmissionFactor[]           @relation("factorCreatedBy")
+  approvedFactors         EmissionFactor[]           @relation("factorApprovedBy")
+  withdrawnFactors        EmissionFactor[]           @relation("factorWithdrawnBy")
+  submittedFactors        EmissionFactor[]           @relation("factorSubmittedBy")
+  unitRequests            UnitRequest[]              @relation("unitRequestedBy")
+  unitResolutions         UnitRequest[]              @relation("unitResolvedBy")
+  fuelPropsCreated        FuelProperty[]             @relation("fuelPropertyCreatedBy")
+  fuelPropsReviewed       FuelProperty[]             @relation("fuelPropertyReviewedBy")
+  calculationRuns         CalculationRun[]
+  confirmedResults        CalculationResult[]
+  reviewedRecords         ActivityRecord[]           @relation("reviewedBy")
+  reviews                 ActivityReview[]
+  lockEvents              PeriodLockEvent[]
+  verifierGrants          VerifierGrant[]            @relation("grantee")
+  grantsGiven             VerifierGrant[]            @relation("grantor")
+  queriesRaised           VerificationQuery[]
+  queryMessages           VerificationQueryMessage[]
+  intakeDocuments         IntakeDocument[]
+  enforcedAssignmentsOrgs Organization[]             @relation("assignmentsEnforcedBy")
+  siteHistoryCreated      FacilitySiteHistory[]      @relation("siteHistoryCreatedBy")
+  siteHistoryClosed       FacilitySiteHistory[]      @relation("siteHistoryClosedBy")
+  assignments             DataEntryAssignment[]      @relation("assignmentUser")
+  assignmentsCreated      DataEntryAssignment[]      @relation("assignmentCreatedBy")
+  assignmentsConfirmed    DataEntryAssignment[]      @relation("assignmentConfirmedBy")
+  assignmentsRevoked      DataEntryAssignment[]      @relation("assignmentRevokedBy")
+  ghgCategoriesConfirmed  EmissionSource[]           @relation("ghgCategoryConfirmedBy")
+}
+
+// A user's role inside one organisation. A user can belong to several organisations.
+model Membership {
+  id             String       @id @default(uuid())
+  userId         String
+  organizationId String
+  role           Role
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
+model Session {
+  id                   String   @id @default(uuid())
+  tokenHash            String   @unique // sha256 of the cookie token; raw token is never stored
+  userId               String
+  mfaVerified          Boolean  @default(false)
+  mfaFailedCount       Int      @default(0)
+  activeOrganizationId String?
+  expiresAt            DateTime
+  createdAt            DateTime @default(now())
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Append-only: UPDATE and DELETE are blocked by a database trigger (see migration).
+model AuditLog {
+  id             String        @id @default(uuid())
+  organizationId String?
+  actorUserId    String?
+  action         String
+  entityType     String
+  entityId       String?
+  before         Json?
+  after          Json?
+  reason         String?
+  createdAt      DateTime      @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([createdAt]) // platform-wide audit trail, newest first
+}
+
+// DRAFT → SUBMITTED → APPROVED, or → RETURNED (corrected, then SUBMITTED again). Only APPROVED is calculated.
+enum ActivityStatus {
+  DRAFT
+  SUBMITTED
+  RETURNED
+  APPROVED
+}
+
+// One quantity of activity (fuel burned, gas released, energy bought) for one
+// emission source over a date range inside one reporting period.
+model ActivityRecord {
+  id                 String              @id @default(uuid())
+  organizationId     String
+  facilityId         String
+  reportingPeriodId  String
+  emissionSourceId   String
+  startDate          DateTime            @db.Date
+  endDate            DateTime            @db.Date // inclusive; equal to startDate for a single day
+  quantity           Decimal             @db.Decimal(20, 6)
+  unit               String
+  parameters         Json? // extra inputs the calculation method declares (density, NCV, instrument MWh…)
+  notes              String?
+  status             ActivityStatus      @default(DRAFT)
+  submittedAt        DateTime?
+  reviewedById       String? // last reviewer to approve or return it
+  reviewedAt         DateTime?
+  returnReason       String? // why it was last returned; kept in the review history too
+  createdById        String
+  updatedById        String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  facility           Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  reportingPeriod    ReportingPeriod     @relation(fields: [reportingPeriodId], references: [id], onDelete: Restrict)
+  emissionSource     EmissionSource      @relation(fields: [emissionSourceId], references: [id], onDelete: Restrict)
+  createdBy          User                @relation("createdBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy          User                @relation("updatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  reviewedBy         User?               @relation("reviewedBy", fields: [reviewedById], references: [id], onDelete: Restrict)
+  evidence           Evidence[]
+  calculationResults CalculationResult[]
+  reviews            ActivityReview[]
+  queries            VerificationQuery[]
+  intakeDocuments    IntakeDocument[]
+  intakeMatches      IntakeMatch[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, reportingPeriodId, facilityId])
+}
+
+// Metadata of an uploaded file. The bytes live in file storage under storageKey.
+model Evidence {
+  id               String         @id @default(uuid())
+  organizationId   String
+  activityRecordId String
+  fileName         String // sanitised original name, for display and download
+  mimeType         String
+  sizeBytes        Int
+  sha256           String
+  storageKey       String         @unique
+  uploadedById     String
+  createdAt        DateTime       @default(now())
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  activityRecord   ActivityRecord @relation(fields: [activityRecordId], references: [id], onDelete: Restrict)
+  uploadedBy       User           @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([activityRecordId])
+}
+
+// The organisation's current subscription (one per organisation). Plan is free text
+// until plans are defined; provider fields leave room for a billing integration.
+model Subscription {
+  id             String             @id @default(uuid())
+  organizationId String             @unique
+  planName       String
+  status         SubscriptionStatus
+  startDate      DateTime           @db.Date
+  endDate        DateTime?          @db.Date // inclusive; null = open-ended
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+// Every change to a subscription, newest last. Never updated or deleted.
+model SubscriptionEvent {
+  id             String             @id @default(uuid())
+  organizationId String
+  actorUserId    String?
+  planName       String
+  status         SubscriptionStatus
+  startDate      DateTime           @db.Date
+  endDate        DateTime?          @db.Date
+  reason         String?
+  createdAt      DateTime           @default(now())
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+}
+
+// One approved/draft boundary configuration per version. The latest APPROVED row
+// is the active boundary. Only one DRAFT may exist at a time (enforced in app logic).
+model OrgBoundary {
+  id             String           @id @default(uuid())
+  organizationId String
+  version        Int // starts at 1, incremented on each new version
+  approach       BoundaryApproach
+  status         BoundaryStatus   @default(DRAFT)
+  effectiveFrom  DateTime         @db.Date // first day of the reporting period this boundary covers
+  baseYear       Int // reference year for comparisons
+  approvedAt     DateTime?
+  approvedById   String?
+  changeReason   String? // reason for creating a new version
+  snapshot       Json? // facility boundary values frozen at approval; null while DRAFT
+  createdAt      DateTime         @default(now())
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  approvedBy     User?            @relation(fields: [approvedById], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, version])
+  @@index([organizationId, createdAt])
+}
+
+// ---- Calculation engine (TC-DOM-002 / workbook TC-DOM-002a) -----------------
+// Reference rows (activity types, units, grid regions, workbook factors) are loaded by
+// src/calc/referenceData.ts, so PostgreSQL and MySQL get identical data.
+
+// Workbook tab 02: what gets measured. Factors and formulae refer to its code.
+model ActivityType {
+  code                 String           @id // e.g. "A-GRID"
+  name                 String
+  scope                Int // 1 or 2
+  category             String // workbook category, e.g. "Purchased electricity"
+  sourceCategory       SourceCategory? // emission sources of this category are measured as this activity
+  measuredIn           String // unit code (Unit.code) the workbook measures it in
+  allowedUnits         Json // unit codes accepted on activity records (V-16)
+  carbonOrigin         String // "Fossil" | "Biogenic"
+  formulaCode          String? // workbook tab 06 calculation, e.g. "C-06"; null = not calculable yet
+  // Reference (default) fuel properties, structured columns the engine reads (never the notes).
+  defaultNcv           Decimal?         @db.Decimal(30, 15) // TJ per tonne (NCV basis), combustion only
+  defaultNcvPublished  String? // as published, value and unit, e.g. "43 GJ/t"
+  defaultNcvSource     String? // where the default comes from
+  defaultDensity       Decimal?         @db.Decimal(30, 15) // as published, in defaultDensityUnit
+  defaultDensityUnit   String? // "kg/l" | "kg/m3"
+  defaultDensitySource String?
+  notes                String?
+  factors              EmissionFactor[]
+  sources              EmissionSource[]
+  fuelProperties       FuelProperty[]
+}
+
+// Workbook tab 03: every unit and its multiplier to the base unit of its dimension.
+model Unit {
+  code      String  @id // e.g. "kWh"
+  name      String
+  dimension String // e.g. "Energy"
+  baseUnit  String // e.g. "MJ"
+  toBase    Decimal @db.Decimal(30, 15) // value x toBase = value in baseUnit (exact, never rounded)
+  notes     String?
+}
+
+// Electricity grid a facility draws from. Facility.gridLocation holds the name.
+model GridRegion {
+  code         String           @id // e.g. "IN-ALL"
+  name         String           @unique // e.g. "India - National Average"
+  country      String
+  fallbackCode String? // region whose factor is used, flagged for review, when none is loaded for this one (tab 05 rule 9)
+  sortOrder    Int              @default(0)
+  factors      EmissionFactor[]
+}
+
+// Workbook tab 04: one row per factor per gas per version. Never edited in place:
+// a newly published value is a new row, and the old row stays so past reports reproduce.
+model EmissionFactor {
+  id              String              @id @default(uuid())
+  code            String              @unique // workbook Factor ID, e.g. "EF-0020"
+  activityCode    String? // null for GWP rows that apply to every activity (tab 04 "ALL (C-09)")
+  gas             String // e.g. "CO2e"
+  value           Decimal             @db.Decimal(30, 15) // exactly as published (R-10)
+  numeratorUnit   String // "tCO2e" or "kgCO2e"
+  denominatorUnit String // Unit.code, e.g. "MWh"
+  carbonOrigin    String
+  source          String // publication
+  sourceVersion   String // e.g. "v21"
+  validFrom       DateTime            @db.Date
+  validTo         DateTime?           @db.Date // null = open-ended
+  regionCode      String? // grid factors: the region they apply to
+  geography       String // as written in the source
+  tier            String
+  notes           String?
+  // GWP rows (and refrigerant GWPs): the IPCC assessment set and time horizon. Null for every other factor.
+  gwpSet          String? // "AR6" | "AR5"
+  gwpBasis        String? // "GWP-100"
+  // Lifecycle: only ACTIVE factors are selected by calculations. Withdrawn factors stay for the history.
+  status          FactorStatus        @default(DRAFT)
+  // How the value was derived and what it must not be used for (the verifier reads this). Required to leave DRAFT.
+  basis           String?
+  // Evidence for the value (source document, lab report, supplier declaration). Required to leave DRAFT.
+  evidenceFile    String?
+  evidenceName    String?
+  evidenceSha256  String?
+  submittedById   String?
+  submittedAt     DateTime?
+  approvalNote    String?
+  // The earlier version this one replaces; on approval that version is end-dated and SUPERSEDED.
+  supersedesId    String?
+  // Null = shared library (Super Admins). Set = private to that organisation (supplier or site factors).
+  organizationId  String?
+  createdById     String? // null = shipped with the workbook seed
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime?           @updatedAt
+  approvedById    String?
+  approvedAt      DateTime?
+  // Superseded / end-dated: by whom, when and why (column names kept from the earlier withdrawn state).
+  withdrawnById   String?
+  withdrawnAt     DateTime?
+  withdrawnReason String?
+  activityType    ActivityType?       @relation(fields: [activityCode], references: [code], onDelete: Restrict)
+  region          GridRegion?         @relation(fields: [regionCode], references: [code], onDelete: Restrict)
+  organization    Organization?       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy       User?               @relation("factorCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy      User?               @relation("factorApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  withdrawnBy     User?               @relation("factorWithdrawnBy", fields: [withdrawnById], references: [id], onDelete: Restrict)
+  submittedBy     User?               @relation("factorSubmittedBy", fields: [submittedById], references: [id], onDelete: Restrict)
+  results         CalculationResult[]
+
+  @@index([activityCode, regionCode, validFrom])
+  @@index([organizationId, status])
+}
+
+// TC-ARC-006 section 3. Forward only, never deleted. Calculations select APPROVED and IN_USE.
+// IN_USE is set automatically once a calculation result uses the factor; it is then frozen.
+// SUPERSEDED: end-dated or replaced by a newer version; results already calculated keep their snapshot.
+enum FactorStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  IN_USE
+  SUPERSEDED
+}
+
+enum UnitRequestStatus {
+  OPEN
+  ADDED
+  DECLINED
+}
+
+// A unit a user needed for a factor but could not find (TC-ARC-006 A-5): requested, never substituted.
+model UnitRequest {
+  id             String            @id @default(uuid())
+  organizationId String?
+  requestedById  String
+  activityCode   String?
+  unit           String
+  reason         String
+  status         UnitRequestStatus @default(OPEN)
+  resolvedById   String?
+  resolvedAt     DateTime?
+  resolution     String?
+  createdAt      DateTime          @default(now())
+  organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy    User              @relation("unitRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  resolvedBy     User?             @relation("unitResolvedBy", fields: [resolvedById], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+}
+
+// Site fuel properties register (Tier 3, tab 05 rules 1 and 5): one fuel at one facility for one calendar month,
+// from a laboratory certificate. A correction is a new version; the earlier one is kept (SUPERSEDED) so results
+// calculated with it reproduce. Only APPROVED versions are applied by calculations.
+model FuelProperty {
+  id              String             @id @default(uuid())
+  organizationId  String
+  facilityId      String
+  activityCode    String
+  month           DateTime           @db.Date // first day of the calendar month it covers
+  version         Int                @default(1)
+  status          FuelPropertyStatus @default(DRAFT)
+  ncv             Decimal?           @db.Decimal(30, 15) // TJ per tonne (NCV basis)
+  density         Decimal?           @db.Decimal(30, 15)
+  densityUnit     String? // "kg/l" | "kg/m3"
+  carbonContent   Decimal?           @db.Decimal(30, 15) // mass fraction of carbon, t C per t fuel (ultimate analysis)
+  oxidationFactor Decimal?           @db.Decimal(10, 6) // fraction; null = 1 (IPCC 2006 default)
+  biogenicShare   Decimal?           @db.Decimal(10, 6) // fraction of carbon that is biogenic, for blends (J-12, J-16)
+  certificateRef  String // laboratory certificate number or document reference
+  laboratory      String?
+  sampleDate      DateTime?          @db.Date
+  notes           String?
+  evidenceFile    String? // storage key of the uploaded certificate
+  evidenceName    String?
+  evidenceSha256  String?
+  createdById     String
+  createdAt       DateTime           @default(now())
+  reviewedById    String?
+  reviewedAt      DateTime?
+  reviewNote      String?
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  facility        Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  activityType    ActivityType       @relation(fields: [activityCode], references: [code], onDelete: Restrict)
+  createdBy       User               @relation("fuelPropertyCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  reviewedBy      User?              @relation("fuelPropertyReviewedBy", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  @@unique([facilityId, activityCode, month, version])
+  @@index([organizationId, facilityId, activityCode, month])
+}
+
+enum FuelPropertyStatus {
+  DRAFT
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+// One calculation of a reporting period. Runs are never overwritten: each run is history.
+model CalculationRun {
+  id                          String              @id @default(uuid())
+  organizationId              String
+  reportingPeriodId           String
+  engineVersion               String // specification the engine implements, e.g. "TC-DOM-002a v0.1"
+  recordCount                 Int // submitted records with a calculable activity
+  calculatedCount             Int
+  blockedCount                Int
+  notCalculableCount          Int // submitted records whose activity has no formula yet
+  scope2LocationTCO2e         Decimal             @db.Decimal(45, 25) // gross sum of C-06 results, unrounded
+  boundaryId                  String? // approved boundary version applied to the roll-up
+  scope2LocationBoundaryTCO2e Decimal?            @db.Decimal(45, 25) // weighted by share counted; null when no approved boundary covers every facility
+  gwpSet                      String              @default("AR6") // one GWP set per run and report (V-12); AR5 needs a reason (J-09)
+  gwpReason                   String?
+  gwpBasis                    String              @default("GWP-100")
+  totals                      Json? // per tab 09 line: { SCOPE1: { gross, counted }, SCOPE2_LOCATION: …, SCOPE2_MARKET: …, BIOGENIC_MEMO: … }
+  runById                     String
+  createdAt                   DateTime            @default(now())
+  organization                Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reportingPeriod             ReportingPeriod     @relation(fields: [reportingPeriodId], references: [id], onDelete: Restrict)
+  runBy                       User                @relation(fields: [runById], references: [id], onDelete: Restrict)
+  results                     CalculationResult[]
+
+  @@index([organizationId, reportingPeriodId, createdAt])
+}
+
+enum CalcResultStatus {
+  CALCULATED
+  BLOCKED // a validation rule stopped the calculation; see issues
+}
+
+// The calculation of one activity record in one run, with everything needed to reproduce it.
+model CalculationResult {
+  id                 String           @id @default(uuid())
+  runId              String
+  organizationId     String
+  activityRecordId   String
+  facilityId         String
+  formulaCode        String // e.g. "C-06"
+  line               String           @default("SCOPE2_LOCATION") // tab 09 roll-up line it adds to
+  status             CalcResultStatus
+  inputs             Json // record values as used: quantity, unit, conversion, grid region asked and used
+  emissionFactorId   String?
+  factorValue        Decimal?         @db.Decimal(30, 15) // copy of the factor value applied
+  factorUnit         String? // copy of the factor units at calculation time, e.g. kg CO2 / TJ
+  selection          Json? // factor selection rule applied, other candidates, fallback
+  tCO2e              Decimal?         @db.Decimal(45, 25) // unrounded (R-04)
+  biogenicTCO2       Decimal?         @db.Decimal(45, 25) // biogenic CO2 memo item (C-02), never in the Scope 1 total
+  gases              Json? // per-gas masses in kg (G-11), e.g. { CO2, CH4, N2O } or { "R-410A": … }
+  inclusionPct       Decimal?         @db.Decimal(5, 2) // share counted from the approved boundary
+  issues             Json // [{ code, severity, message }] from workbook tab 10
+  needsConfirmation  Boolean          @default(false) // a warning that a person must confirm with a reason
+  confirmedById      String?
+  confirmedAt        DateTime?
+  confirmationReason String?
+  // Site and names as at calculation time; never rewritten. No FK on siteId: the historical value must survive.
+  siteId             String?
+  siteCode           String?
+  siteName           String?
+  facilityCode       String?
+  facilityName       String?
+  siteAttribution    SiteAttribution  @default(LEGACY_UNKNOWN)
+  gridSource         String?          @db.VarChar(20) // SNAPSHOT or FACILITY
+  createdAt          DateTime         @default(now())
+  run                CalculationRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  organization       Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  activityRecord     ActivityRecord   @relation(fields: [activityRecordId], references: [id], onDelete: Restrict)
+  facility           Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  emissionFactor     EmissionFactor?  @relation(fields: [emissionFactorId], references: [id], onDelete: Restrict)
+  confirmedBy        User?            @relation(fields: [confirmedById], references: [id], onDelete: Restrict)
+
+  @@index([runId])
+  @@index([activityRecordId, createdAt])
+  @@index([runId, siteAttribution, siteId])
+  @@index([runId, facilityId])
+}
+
+// ---- Review, period close and verification -----------------------------------------------------
+
+enum ReviewAction {
+  SUBMITTED
+  APPROVED
+  RETURNED
+}
+
+// Status history of an activity record. Never updated or deleted.
+model ActivityReview {
+  id               String         @id @default(uuid())
+  organizationId   String
+  activityRecordId String
+  action           ReviewAction
+  fromStatus       ActivityStatus
+  toStatus         ActivityStatus
+  actorId          String
+  comment          String?
+  createdAt        DateTime       @default(now())
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  activityRecord   ActivityRecord @relation(fields: [activityRecordId], references: [id], onDelete: Cascade)
+  actor            User           @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([activityRecordId, createdAt])
+}
+
+enum LockAction {
+  LOCKED
+  REOPENED
+}
+
+// Every lock and reopen of a reporting period, with the run locked on and the reason for reopening.
+model PeriodLockEvent {
+  id                String          @id @default(uuid())
+  organizationId    String
+  reportingPeriodId String
+  action            LockAction
+  runId             String?
+  actorId           String
+  reason            String?
+  createdAt         DateTime        @default(now())
+  organization      Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reportingPeriod   ReportingPeriod @relation(fields: [reportingPeriodId], references: [id], onDelete: Cascade)
+  actor             User            @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([reportingPeriodId, createdAt])
+}
+
+// A verifier sees only the reporting periods a Tenant Admin has granted them.
+model VerifierGrant {
+  id                String          @id @default(uuid())
+  organizationId    String
+  userId            String
+  reportingPeriodId String
+  grantedById       String
+  createdAt         DateTime        @default(now())
+  organization      Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user              User            @relation("grantee", fields: [userId], references: [id], onDelete: Cascade)
+  reportingPeriod   ReportingPeriod @relation(fields: [reportingPeriodId], references: [id], onDelete: Cascade)
+  grantedBy         User            @relation("grantor", fields: [grantedById], references: [id], onDelete: Restrict)
+
+  @@unique([userId, reportingPeriodId])
+  @@index([organizationId])
+}
+
+enum QueryStatus {
+  OPEN // waiting for the organisation
+  ANSWERED // waiting for the verifier
+  CLOSED
+}
+
+// A verifier's question about a period or one record, and the replies to it.
+model VerificationQuery {
+  id                String                     @id @default(uuid())
+  organizationId    String
+  reportingPeriodId String
+  activityRecordId  String?
+  subject           String
+  status            QueryStatus                @default(OPEN)
+  raisedById        String
+  closedAt          DateTime?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  organization      Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reportingPeriod   ReportingPeriod            @relation(fields: [reportingPeriodId], references: [id], onDelete: Restrict)
+  activityRecord    ActivityRecord?            @relation(fields: [activityRecordId], references: [id], onDelete: Restrict)
+  raisedBy          User                       @relation(fields: [raisedById], references: [id], onDelete: Restrict)
+  messages          VerificationQueryMessage[]
+
+  @@index([organizationId, status, updatedAt])
+}
+
+model VerificationQueryMessage {
+  id        String            @id @default(uuid())
+  queryId   String
+  authorId  String
+  body      String
+  createdAt DateTime          @default(now())
+  query     VerificationQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  author    User              @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([queryId, createdAt])
+}
+
+// ---- AI document intake ---------------------------------------------------------------
+enum IntakeStatus {
+  PENDING // stored, waiting to be read
+  PROCESSING
+  EXTRACTED // read; a person checks the values before any record exists
+  FAILED // stored and safe; can be retried
+}
+
+// A bill or log uploaded for automatic reading. The file is kept whatever the AI service does.
+model IntakeDocument {
+  id               String             @id @default(uuid())
+  organizationId   String
+  fileName         String
+  mimeType         String
+  sizeBytes        Int
+  sha256           String
+  storageKey       String             @unique
+  uploadedById     String
+  status           IntakeStatus       @default(PENDING)
+  attempts         Int                @default(0)
+  errorCode        String?
+  errorMessage     String?
+  documentType     String?
+  result           Json? // validated values for a person to check; never used in a calculation directly
+  provider         String?
+  model            String?
+  activityRecordId String? // the record it was attached to as evidence
+  category         String? // document type chosen by a person; overrides the AI's classification
+  duplicateOfId    String? // another document with the same supplier and invoice number (a warning, never a block)
+  rejectedAt       DateTime? // a person decided the document is not usable; it is kept
+  rejectReason     String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy       User               @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  activityRecord   ActivityRecord?    @relation(fields: [activityRecordId], references: [id], onDelete: SetNull)
+  usageEvents      AiUsageEvent[]
+  matches          IntakeMatch[]
+  corrections      IntakeCorrection[]
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, status])
+  @@index([organizationId, sha256])
+}
+
+// One call to the AI provider: tokens and estimated cost, kept for usage tracking.
+model AiUsageEvent {
+  id               String          @id @default(uuid())
+  organizationId   String
+  documentId       String?
+  provider         String
+  model            String
+  success          Boolean
+  errorCode        String?
+  inputTokens      Int             @default(0)
+  outputTokens     Int             @default(0)
+  estimatedCostUsd Decimal?        @db.Decimal(14, 6)
+  durationMs       Int             @default(0)
+  createdAt        DateTime        @default(now())
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  document         IntakeDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([createdAt])
+}
+
+// One invoice inside a document matched to an activity record (a PDF can hold several invoices).
+model IntakeMatch {
+  id               String         @id @default(uuid())
+  organizationId   String
+  documentId       String
+  invoiceIndex     Int // 0 = first invoice in the document
+  activityRecordId String
+  withEvidence     Boolean // false when matched to a record that could no longer take new evidence
+  matchedById      String
+  createdAt        DateTime       @default(now())
+  document         IntakeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  activityRecord   ActivityRecord @relation(fields: [activityRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, invoiceIndex])
+  @@index([organizationId, activityRecordId])
+}
+
+// What a person changed from the values the AI read: the record of how reliable reading is.
+model IntakeCorrection {
+  id             String         @id @default(uuid())
+  organizationId String
+  documentId     String
+  invoiceIndex   Int
+  field          String
+  before         String?
+  after          String?
+  userId         String
+  createdAt      DateTime       @default(now())
+  document       IntakeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([organizationId, field])
+}
+
+// A reviewer looked at a data quality finding and decided it needs no change (a false positive or explained).
+// The finding itself is recomputed from the data every time; only this decision is stored.
+model DataQualityReview {
+  id             String   @id @default(uuid())
+  organizationId String
+  findingKey     String // stable id of the finding, e.g. "ANOMALY:<source id>:2024-03"
+  note           String
+  reviewedById   String
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, findingKey])
+}
+
+enum ReconciliationStatus {
+  OPEN
+  RESOLVED
+}
+
+// Several sources that should agree about one activity (bill, meter, manual entry, import). A person decides
+// the correct value and says why; activity records are never changed by it.
+model Reconciliation {
+  id             String               @id @default(uuid())
+  organizationId String
+  title          String
+  facilityId     String?
+  unit           String
+  status         ReconciliationStatus @default(OPEN)
+  resolvedValue  Decimal?             @db.Decimal(20, 6)
+  resolution     String? // the explanation for the value chosen
+  resolvedById   String?
+  resolvedAt     DateTime?
+  createdById    String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  items          ReconciliationItem[]
+
+  @@index([organizationId, status, createdAt])
+}
+
+model ReconciliationItem {
+  id               String         @id @default(uuid())
+  reconciliationId String
+  kind             String // RECORD, BILL, METER, OTHER_RECORD, MANUAL
+  label            String
+  value            Decimal        @db.Decimal(20, 6)
+  unit             String
+  activityRecordId String?
+  documentId       String?
+  addedById        String
+  createdAt        DateTime       @default(now())
+  reconciliation   Reconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+
+  @@index([reconciliationId])
+}
+
+// A what-if: percentage changes applied to one period's calculated results. Hypothetical only; it never
+// touches activity data, runs or reports.
+model Scenario {
+  id                String   @id @default(uuid())
+  organizationId    String
+  name              String
+  reportingPeriodId String
+  adjustments       Json // [{ target: "category" | "facility" | "source", key, percent }]
+  createdById       String
+  createdAt         DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+}
+
+// A business measure to divide emissions by (employees, tonnes produced, revenue, floor area...), for one
+// period and optionally one facility.
+model IntensityMetric {
+  id                String   @id @default(uuid())
+  organizationId    String
+  reportingPeriodId String
+  facilityId        String? // null = whole organisation
+  metric            String // EMPLOYEES, PRODUCTION, REVENUE, AREA, OUTPUT
+  label             String // what the denominator is, e.g. "Tonnes of clinker"
+  value             Decimal  @db.Decimal(20, 6)
+  unit              String
+  createdById       String
+  createdAt         DateTime @default(now())
+
+  @@unique([organizationId, reportingPeriodId, facilityId, metric])
+}
+
+// A reduction target against a baseline period. The baseline figure is kept; recalculating it adds a revision.
+model CarbonTarget {
+  id               String                   @id @default(uuid())
+  organizationId   String
+  name             String
+  baselinePeriodId String
+  baselineTCO2e    Decimal                  @db.Decimal(45, 25) // as currently stated; the first revision holds the original
+  scope            String // ALL, SCOPE1, SCOPE2
+  facilityId       String?
+  targetYear       Int
+  reductionPercent Decimal                  @db.Decimal(6, 2)
+  createdById      String
+  createdAt        DateTime                 @default(now())
+  revisions        TargetBaselineRevision[]
+
+  @@index([organizationId])
+}
+
+model TargetBaselineRevision {
+  id            String       @id @default(uuid())
+  targetId      String
+  previousTCO2e Decimal?     @db.Decimal(45, 25) // null for the original baseline
+  newTCO2e      Decimal      @db.Decimal(45, 25)
+  reason        String
+  userId        String
+  createdAt     DateTime     @default(now())
+  target        CarbonTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@index([targetId])
+}
+
+// A renewable electricity instrument the organisation holds: an energy attribute certificate (I-REC, REC),
+// a power purchase agreement or a green supply contract. Whether it qualifies is checked, never assumed.
+model EnergyInstrument {
+  id             String                 @id @default(uuid())
+  organizationId String
+  type           String // I_REC, REC, PPA, GREEN_TARIFF, OTHER_EAC
+  reference      String // certificate number or contract reference
+  issuer         String?
+  supplier       String?
+  quantityMWh    Decimal                @db.Decimal(20, 6)
+  generationFrom DateTime               @db.Date
+  generationTo   DateTime               @db.Date
+  country        String? // market the energy was generated in
+  retiredAt      DateTime?              @db.Date
+  retiredForOrg  Boolean                @default(false) // retired or cancelled on the organisation's behalf
+  emissionFactor Decimal?               @db.Decimal(30, 15) // supplier-specific tCO2e/MWh, when the contract states one
+  notes          String?
+  createdById    String
+  createdAt      DateTime               @default(now())
+  allocations    InstrumentAllocation[]
+
+  @@unique([organizationId, type, reference])
+}
+
+model InstrumentAllocation {
+  id               String           @id @default(uuid())
+  organizationId   String
+  instrumentId     String
+  activityRecordId String
+  mwh              Decimal          @db.Decimal(20, 6)
+  allocatedById    String
+  createdAt        DateTime         @default(now())
+  instrument       EnergyInstrument @relation(fields: [instrumentId], references: [id], onDelete: Restrict)
+
+  @@unique([instrumentId, activityRecordId])
+  @@index([organizationId, activityRecordId])
+}

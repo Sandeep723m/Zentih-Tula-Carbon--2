@@ -1,0 +1,23 @@
+/* Super Admin: Activities, Formulas & Units (PlatformActivityTypesPage) */
+.formulas { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); align-items: start; gap: var(--space-5); }
+@media (max-width: 1100px) { .formulas { grid-template-columns: 1fr; } }
+
+.formulas__row { align-items: center; }
+.formulas__main { display: grid; gap: 2px; min-width: 0; }
+.formulas__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.formulas__badges { display: flex; gap: var(--space-2); flex: none; }
+
+.formulas__block > * + * { margin-top: var(--space-2); }
+.formulas__heading { font-size: var(--text-sm); font-weight: 600; }
+.formulas__steps { padding-left: var(--space-5); }
+.formulas__steps > li + li { margin-top: var(--space-1); }
+
+.formulas__edit { border-top: 1px solid var(--color-border); padding-top: var(--space-4); }
+.formulas__units { border: 0; padding: 0; margin: var(--space-3) 0 0; }
+.formulas__units > * + * { margin-top: var(--space-3); }
+.formulas__dimension { display: grid; gap: var(--space-1); }
+.formulas__checks { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
+.formulas__check { display: inline-flex; align-items: center; gap: var(--space-1); }
+
+.formulas__change { align-items: flex-start; }
+.formulas__history > * + * { margin-top: var(--space-2); }

@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": ".",
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["src", "generated", "scripts/bootstrap-super-admin.ts", "scripts/data-import.ts", "scripts/reference-seed.ts", "scripts/factor-audit.ts", "scripts/zenith-test-seed.ts"]
+}
