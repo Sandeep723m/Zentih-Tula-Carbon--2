@@ -206,7 +206,7 @@ export function ActivityDashboardPage() {
         </div>
         <div className="dashboard-head__controls">
           <div className="dashboard-head__actions">
-            {me?.permissions.includes('report.read') && <Link className="button button--warm" to="/analytics"><ChartColumn size={16} /> Analytics report</Link>}
+            {me?.permissions.includes('report.read') && <a className="button button--warm" href="https://tula-karbon-ze-d1.vercel.app/" target="_blank" rel="noopener noreferrer"><ChartColumn size={16} /> View analytics</a>}
             {canWrite && <Link className="button" to="/activities/new"><Plus size={16} /> Add activity</Link>}
           </div>
         </div>
