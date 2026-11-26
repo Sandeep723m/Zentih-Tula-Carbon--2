@@ -23,9 +23,9 @@
   --surface-canvas: #fcfcfd;
   --surface-default: #ffffff;
   --surface-subtle: #faf7ff;
-  --surface-sidebar: #f8f6fa;
-  --surface-sidebar-hover: #f1eff4;
-  --surface-sidebar-active: #f0e6ff;
+  --surface-sidebar: #ffffff;
+  --surface-sidebar-hover: #f4f1fb;
+  --surface-sidebar-active: #ebe7fb;
   --surface-selected: #f8f3ff;
   --surface-table-header: #f7f5fa;
   --text-primary: #201829;

@@ -21,19 +21,31 @@ const pageNumbers = (current: number, last: number): Array<number | 'ellipsis'> 
   return [1, 'ellipsis', current - 1, current, current + 1, 'ellipsis', last]
 }
 
-const DOT_MARK_HEIGHTS = [2, 3, 4, 6, 4, 3, 5, 4, 3, 5, 4, 3, 6, 4, 3, 5]
-function DotMark() {
-  return <svg className="dashboard-metric__mark" viewBox="0 0 116 52" aria-hidden="true">{DOT_MARK_HEIGHTS.flatMap((height, column) => Array.from({ length: 7 }, (_, row) => {
-    const snakeStep = row * DOT_MARK_HEIGHTS.length + (row % 2 ? DOT_MARK_HEIGHTS.length - 1 - column : column)
-    const motionStyle = {
-      '--dot-rest-delay': `${column * 115 + row * 24}ms`,
-      '--dot-snake-delay': `${snakeStep * 22}ms`,
-    } as CSSProperties
-    return <circle key={`${column}-${row}`} cx={4 + column * 7} cy={4 + row * 7} r="1.65" className={row >= 7 - height ? 'is-active' : ''} style={motionStyle} />
-  }))}</svg>
+const DOT_COLUMNS = 16
+const DOT_ROWS = 7
+function dotMatrix(value: number, maxValue: number) {
+  const ratio = maxValue > 0 ? Math.max(0, Math.min(value / maxValue, 1)) : 0
+  const activeDots = Math.round(DOT_COLUMNS * DOT_ROWS * ratio)
+  // Fill from the bottom-left in a stable order so colored-dot density directly
+  // reflects the record count instead of an unrelated decorative waveform.
+  return Array.from({ length: DOT_COLUMNS * DOT_ROWS }, (_, index) => {
+    const rowFromBottom = Math.floor(index / DOT_COLUMNS)
+    const column = index % DOT_COLUMNS
+    return { column, row: DOT_ROWS - 1 - rowFromBottom, active: index < activeDots }
+  })
 }
 
-function ActivityMetricCard({ tone, icon: Icon, title, value, detail, to }: { tone: string; icon: LucideIcon; title: string; value: number; detail: string; to: string }) {
+function DotMark({ value, maxValue }: { value: number; maxValue: number }) {
+  const dots = dotMatrix(value, maxValue)
+  return <svg className="dashboard-metric__mark" viewBox="0 0 116 52" aria-hidden="true">{dots.map(({ column, row, active }) => {
+    const motionStyle = {
+      '--dot-rest-delay': `${column * 115 + row * 24}ms`,
+    } as CSSProperties
+    return <circle key={`${column}-${row}`} cx={4 + column * 7} cy={4 + row * 7} r="1.65" className={active ? 'is-active' : ''} style={motionStyle} />
+  })}</svg>
+}
+
+function ActivityMetricCard({ tone, icon: Icon, title, value, maxValue, detail, to }: { tone: string; icon: LucideIcon; title: string; value: number; maxValue: number; detail: string; to: string }) {
   return (
     <Link className={`dashboard-metric dashboard-metric--${tone}`} to={to}>
       <div className="dashboard-metric__top">
@@ -43,7 +55,7 @@ function ActivityMetricCard({ tone, icon: Icon, title, value, detail, to }: { to
       </div>
       <div className="dashboard-metric__bottom">
         <div className="dashboard-metric__value-wrap"><strong>{value.toLocaleString()}</strong><span>{detail}</span></div>
-        <DotMark />
+        <DotMark value={value} maxValue={maxValue} />
       </div>
     </Link>
   )
@@ -226,10 +238,10 @@ export function ActivityDashboardPage() {
       {data && (
         <>
           <section className="dashboard-metrics" aria-label="Activity summary">
-            <ActivityMetricCard tone="violet" icon={Activity} title="Activity records" value={totalAcrossStatuses} detail="In selected view" to="/activities" />
-            <ActivityMetricCard tone="green" icon={CircleCheck} title="Approved records" value={count('APPROVED')} detail="Reviewed and approved" to="/activities?status=APPROVED" />
-            <ActivityMetricCard tone="orange" icon={CircleAlert} title="Returned" value={count('RETURNED')} detail="Needs correction" to="/activities?status=RETURNED" />
-            <ActivityMetricCard tone="blue" icon={Clock3} title="Pending review" value={count('SUBMITTED')} detail="Submitted for review" to={me?.permissions.includes('activity.review') ? '/review' : '/activities?status=SUBMITTED'} />
+            <ActivityMetricCard tone="violet" icon={Activity} title="Activity records" value={totalAcrossStatuses} maxValue={totalAcrossStatuses} detail="In selected view" to="/activities" />
+            <ActivityMetricCard tone="green" icon={CircleCheck} title="Approved records" value={count('APPROVED')} maxValue={totalAcrossStatuses} detail="Reviewed and approved" to="/activities?status=APPROVED" />
+            <ActivityMetricCard tone="orange" icon={CircleAlert} title="Returned" value={count('RETURNED')} maxValue={totalAcrossStatuses} detail="Needs correction" to="/activities?status=RETURNED" />
+            <ActivityMetricCard tone="blue" icon={Clock3} title="Pending review" value={count('SUBMITTED')} maxValue={totalAcrossStatuses} detail="Submitted for review" to={me?.permissions.includes('activity.review') ? '/review' : '/activities?status=SUBMITTED'} />
           </section>
 
           <Tabs label="Activity status" active={params.get('status') ?? ''} onChange={(key) => changeParam('status', key)} tabs={statusTabs} />

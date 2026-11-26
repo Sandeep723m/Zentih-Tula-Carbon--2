@@ -80,6 +80,9 @@
 @media (max-width: 380px) {
   .topbar { gap: 4px; padding-right: 8px; padding-left: 8px; }
   .topbar__brand img { width: 64px; height: 22px; }
+  .topbar__nav-tools { flex-basis: 82px; }
+  .topbar__nav-tools .sidebar__search { gap: 4px; padding-right: 6px; padding-left: 6px; }
+  .topbar__nav-tools .sidebar__search input { min-width: 0; font-size: 11px; }
   .topbar__context .pill { padding-right: 6px; padding-left: 6px; font-size: 12px; }
   .topbar__context .pill__text { max-width: 68px; }
   .topbar__context .pill svg { width: 13px; }
